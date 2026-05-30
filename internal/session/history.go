@@ -18,6 +18,7 @@ const (
 	PlanTask              TaskType = "plan_task"
 	MainTask              TaskType = "main_task"
 	MemoryCompressionTask TaskType = "memory_compression_task"
+	ReLocationTask        TaskType = "re_location_task"
 )
 
 // SessionHistory is the top-level container for an entire CR run.

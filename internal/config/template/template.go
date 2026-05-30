@@ -18,6 +18,7 @@ type Template struct {
 	MaxToolRequestTimes   int              `json:"MAX_TOOL_REQUEST_TIMES"`
 	MaxSubtaskExecMinutes int              `json:"MAX_SUBTASK_EXECUTION_TIME_MINUTES"`
 	PlanModeLineThreshold int              `json:"PLAN_MODE_LINE_THRESHOLD"`
+	ReLocationTask        *LlmConversation `json:"RE_LOCATION_TASK,omitempty"`
 }
 
 //go:embed task_template.json

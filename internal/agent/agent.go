@@ -842,22 +842,67 @@ func (a *Agent) executeToolCall(ctx context.Context, newPath string, call llm.To
 
 	startTime := time.Now()
 
-	// Async path for code_comment when worker pool is configured
-	// Mirrors Java: pendingCommentFutures.add(subtaskExecutor.submit(() -> getCodeComments(...)))
-	if t == tool.CodeComment && a.args.CommentWorkerPool != nil {
-		if rec != nil {
-			rec.AddToolResult(t.Name(), call.Function.Arguments, "(async)")
-		}
-		pool := a.args.CommentWorkerPool
+	// code_comment: parse → resolve line numbers → re-locate if needed → add to collector
+	if t == tool.CodeComment {
 		telemetry.PrintToolCallStarted(t.Name(), args)
-		pool.Submit(func() ([]model.LlmComment, error) {
-			_, _ = p.Execute(args) // provider parses args and adds to collector
-			telemetry.RecordToolCall(ctx, t.Name(), time.Since(startTime), true)
-			return []model.LlmComment{}, nil
-		})
-		// Return immediate success - actual comment processing continues off
-		// the critical path, exactly like Java's subtaskExecutor.submit for CODE_COMMENT.
-		telemetry.RecordToolCall(ctx, t.Name(), time.Since(startTime), true)
+
+		comments, errMsg := tool.ParseComments(args)
+		if errMsg != "" {
+			telemetry.RecordToolCall(ctx, t.Name(), time.Since(startTime), false)
+			return tool.Of(errMsg)
+		}
+
+		resolveAndCollect := func(rctx context.Context) {
+			for i := range comments {
+				cm := &comments[i]
+				d := a.findDiff(cm.Path)
+				if d != nil {
+					if !diff.ResolveComment(cm, d) && a.args.Template.ReLocationTask != nil {
+						rlStart := time.Now()
+						_, resp, msgs := diff.ReLocateComment(rctx, cm, d, a.args.LLMClient, a.args.Template.ReLocationTask, a.args.Model, a.args.Template.MaxTokens)
+						if msgs != nil {
+							fs := a.session.GetOrCreateFileSession(cm.Path)
+							rlRec := fs.AppendTaskRecord(session.ReLocationTask, msgs)
+							if resp != nil {
+								rlRec.SetResponse(resp, time.Since(rlStart))
+								if resp.Usage != nil {
+									atomic.AddInt64(&a.totalTokensUsed, int64(resp.Usage.TotalTokens))
+									atomic.AddInt64(&a.totalInputTokens, int64(resp.Usage.PromptTokens+resp.Usage.CacheReadTokens))
+									atomic.AddInt64(&a.totalOutputTokens, int64(resp.Usage.CompletionTokens+resp.Usage.CacheWriteTokens))
+								}
+							} else {
+								rlRec.SetError(fmt.Errorf("re-location LLM call failed"), time.Since(rlStart))
+							}
+						}
+					}
+				}
+				a.args.CommentCollector.Add(*cm)
+			}
+		}
+
+		if a.args.CommentWorkerPool != nil {
+			if rec != nil {
+				rec.AddToolResult(t.Name(), call.Function.Arguments, "(async)")
+			}
+			pool := a.args.CommentWorkerPool
+			asyncCtx := context.WithoutCancel(ctx)
+			toolName := t.Name()
+			pool.Submit(func() ([]model.LlmComment, error) {
+				resolveAndCollect(asyncCtx)
+				telemetry.PrintToolCallFinished(toolName, time.Since(startTime))
+				return []model.LlmComment{}, nil
+			})
+			telemetry.RecordToolCall(asyncCtx, toolName, time.Since(startTime), true)
+			return tool.Of(tool.CommentSucceed)
+		}
+
+		resolveAndCollect(ctx)
+		dur := time.Since(startTime)
+		telemetry.RecordToolCall(ctx, t.Name(), dur, true)
+		telemetry.PrintToolCallFinished(t.Name(), dur)
+		if rec != nil {
+			rec.AddToolResult(t.Name(), call.Function.Arguments, tool.CommentSucceed)
+		}
 		return tool.Of(tool.CommentSucceed)
 	}
 
@@ -877,6 +922,16 @@ func (a *Agent) executeToolCall(ctx context.Context, newPath string, call llm.To
 		rec.AddToolResult(t.Name(), call.Function.Arguments, result)
 	}
 	return tool.Of(result)
+}
+
+// findDiff returns the Diff for the given file path, or nil if not found.
+func (a *Agent) findDiff(path string) *model.Diff {
+	for i := range a.diffs {
+		if a.diffs[i].NewPath == path || a.diffs[i].OldPath == path {
+			return &a.diffs[i]
+		}
+	}
+	return nil
 }
 
 // collectPendingComments waits for any async workers then returns aggregated comments from the collector.

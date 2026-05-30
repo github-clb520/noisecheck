@@ -19,8 +19,20 @@ func (p *CodeCommentProvider) Execute(args map[string]any) (string, error) {
 		return "Error: comment collector is not configured", nil
 	}
 
-	// Parse the "comments" array from the tool call arguments.
-	// LLM sometimes double-encodes the array as a JSON string.
+	comments, errMsg := ParseComments(args)
+	if errMsg != "" {
+		return errMsg, nil
+	}
+
+	for i := range comments {
+		p.Collector.Add(comments[i])
+	}
+	return CommentSucceed, nil
+}
+
+// ParseComments extracts LlmComment entries from tool call arguments without writing
+// to the Collector. Returns parsed comments and an error message (empty on success).
+func ParseComments(args map[string]any) ([]model.LlmComment, string) {
 	var rawComments []any
 	if arr, ok := args["comments"].([]any); ok && len(arr) > 0 {
 		rawComments = arr
@@ -29,9 +41,10 @@ func (p *CodeCommentProvider) Execute(args map[string]any) (string, error) {
 	}
 	if len(rawComments) == 0 {
 		raw, _ := json.Marshal(args)
-		return fmt.Sprintf("Error: 'comments' array is required. Got args: %s", string(raw)), nil
+		return nil, fmt.Sprintf("Error: 'comments' array is required. Got args: %s", string(raw))
 	}
 
+	var comments []model.LlmComment
 	for _, raw := range rawComments {
 		obj, ok := raw.(map[string]any)
 		if !ok {
@@ -60,7 +73,7 @@ func (p *CodeCommentProvider) Execute(args map[string]any) (string, error) {
 			continue
 		}
 
-		p.Collector.Add(cm)
+		comments = append(comments, cm)
 	}
-	return CommentSucceed, nil
+	return comments, ""
 }

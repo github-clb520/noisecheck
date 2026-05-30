@@ -54,6 +54,21 @@ func ResolveLineNumbers(comments []model.LlmComment, diffs []model.Diff) []model
 	return result
 }
 
+// ResolveComment attempts to resolve StartLine/EndLine for a single comment
+// by matching ExistingCode against the diff. Returns true on success.
+func ResolveComment(cm *model.LlmComment, d *model.Diff) bool {
+	if cm.StartLine > 0 || cm.EndLine > 0 {
+		return true
+	}
+	if cm.ExistingCode == "" {
+		return false
+	}
+	if resolveFromHunk(d, cm) {
+		return true
+	}
+	return resolveFromFileContent(d, cm)
+}
+
 // indexedLine pairs a normalized line with its absolute file line number.
 type indexedLine struct {
 	lineNum int
