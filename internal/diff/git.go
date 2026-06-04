@@ -139,7 +139,15 @@ func (p *Provider) GetDiff() ([]model.Diff, error) {
 		}
 	}
 
-	diffs, err := ParseDiffText(combined.String(), p.repoDir)
+	var ref string
+	switch p.mode {
+	case ModeRange:
+		ref = p.to
+	case ModeCommit:
+		ref = p.commit
+	}
+
+	diffs, err := ParseDiffText(combined.String(), p.repoDir, ref)
 	if err != nil {
 		return nil, err
 	}

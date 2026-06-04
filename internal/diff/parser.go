@@ -2,11 +2,14 @@
 package diff
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/open-code-review/open-code-review/internal/model"
 )
@@ -19,18 +22,23 @@ var (
 )
 
 // ParseDiffText splits the unified diff text into per-file Diff structs.
-func ParseDiffText(diffText string, repoDir string) ([]model.Diff, error) {
+// ref, if non-empty, is a git ref used to read new-file content via
+// git show instead of reading from the working tree.
+func ParseDiffText(diffText string, repoDir string, ref string) ([]model.Diff, error) {
 	lines := strings.Split(diffText, "\n")
 	var diffs []model.Diff
 	var current *model.Diff
 	var buf strings.Builder
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 
 	for _, line := range lines {
 		if m := diffHeaderRe.FindStringSubmatch(line); m != nil {
 			// Flush previous diff
 			if current != nil {
 				current.Diff = strings.TrimSuffix(buf.String(), "\n")
-				finalizeDiff(current, repoDir)
+				finalizeDiff(ctx, current, repoDir, ref)
 				diffs = append(diffs, *current)
 				buf.Reset()
 			}
@@ -66,17 +74,31 @@ func ParseDiffText(diffText string, repoDir string) ([]model.Diff, error) {
 	// Flush last diff
 	if current != nil {
 		current.Diff = strings.TrimSuffix(buf.String(), "\n")
-		finalizeDiff(current, repoDir)
+		finalizeDiff(ctx, current, repoDir, ref)
 		diffs = append(diffs, *current)
 	}
 
 	return diffs, nil
 }
 
-// finalizeDiff attempts to read the new file content from disk.
-func finalizeDiff(d *model.Diff, repoDir string) {
+// finalizeDiff reads the new file content. When ref is non-empty it uses
+// git show to read the file at that ref; otherwise it reads from disk.
+func finalizeDiff(ctx context.Context, d *model.Diff, repoDir string, ref string) {
 	if d.IsDeleted || d.NewPath == "/dev/null" {
 		d.NewPath = "/dev/null"
+		return
+	}
+	if ref != "" {
+		cmd := exec.CommandContext(ctx, "git", "-c", "core.quotepath=false",
+			"show", ref+":"+d.NewPath)
+		cmd.Dir = repoDir
+		output, err := cmd.Output()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[ocr] WARNING: cannot read file %s at ref %s: %v\n",
+				d.NewPath, ref, err)
+			return
+		}
+		d.NewFileContent = string(output)
 		return
 	}
 	fullPath := filepath.Join(repoDir, d.NewPath)

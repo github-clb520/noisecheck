@@ -57,8 +57,14 @@ func (p *FileFindProvider) Execute(args map[string]any) (string, error) {
 }
 
 // listGitFiles returns tracked and untracked files (respecting .gitignore) via git ls-files.
+// In range/commit mode it uses git ls-tree to list files at the reviewed ref.
 func (p *FileFindProvider) listGitFiles() ([]string, error) {
-	cmd := exec.Command("git", "ls-files", "--cached", "--others", "--exclude-standard")
+	var cmd *exec.Cmd
+	if ref := p.FileReader.Ref; ref != "" {
+		cmd = exec.Command("git", "ls-tree", "-r", "--name-only", ref)
+	} else {
+		cmd = exec.Command("git", "ls-files", "--cached", "--others", "--exclude-standard")
+	}
 	cmd.Dir = p.FileReader.RepoDir
 	output, err := cmd.Output()
 	if err != nil {
