@@ -76,12 +76,51 @@ func (fr *FileReader) Read(ctx context.Context, path string) (string, error) {
 }
 
 func (fr *FileReader) readFromDisk(path string) (string, error) {
-	fullPath := filepath.Join(fr.RepoDir, path)
+	fullPath, err := fr.resolveWorkspacePath(path)
+	if err != nil {
+		return "", err
+	}
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return "", fmt.Errorf("read file %q: %w", path, err)
 	}
 	return string(content), nil
+}
+
+func (fr *FileReader) resolveWorkspacePath(path string) (string, error) {
+	repoRoot, err := filepath.Abs(fr.RepoDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve repository path %q: %w", fr.RepoDir, err)
+	}
+	repoRoot, err = filepath.EvalSymlinks(repoRoot)
+	if err != nil {
+		return "", fmt.Errorf("resolve repository path %q: %w", fr.RepoDir, err)
+	}
+
+	fullPath := filepath.Join(repoRoot, path)
+	if !pathWithinBase(repoRoot, fullPath) {
+		return "", fmt.Errorf("file path %q is outside repository", path)
+	}
+
+	resolvedPath, err := filepath.EvalSymlinks(fullPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fullPath, nil
+		}
+		return "", fmt.Errorf("resolve file %q: %w", path, err)
+	}
+	if !pathWithinBase(repoRoot, resolvedPath) {
+		return "", fmt.Errorf("file path %q is outside repository", path)
+	}
+	return resolvedPath, nil
+}
+
+func pathWithinBase(base, target string) bool {
+	rel, err := filepath.Rel(base, target)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)))
 }
 
 func (fr *FileReader) readFromGitShow(parentCtx context.Context, path string) (string, error) {
@@ -160,7 +199,10 @@ func scanLines(r io.Reader, startLine, maxLines int) ([]string, int, error) {
 }
 
 func (fr *FileReader) readLinesFromDisk(path string, startLine, maxLines int) ([]string, int, error) {
-	fullPath := filepath.Join(fr.RepoDir, path)
+	fullPath, err := fr.resolveWorkspacePath(path)
+	if err != nil {
+		return nil, 0, err
+	}
 	f, err := os.Open(fullPath)
 	if err != nil {
 		return nil, 0, fmt.Errorf("read file %q: %w", path, err)
