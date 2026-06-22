@@ -40,8 +40,8 @@ A real-world code review benchmark built from **50** popular open-source reposit
 | Metric | What it measures | Why it matters |
 |--------|-----------------|----------------|
 | **F1** | Harmonic mean of precision and recall | Best single number for overall review quality |
-| **Precision** | % of reported issues that are real defects | Higher = fewer false alarms to triage |
-| **Recall** | % of real defects that are found | Higher = fewer issues slip through review |
+| **Precision** | Proportion of reported issues that are real defects | Higher = fewer false alarms to triage |
+| **Recall** | Proportion of real defects that are found | Higher = fewer issues slip through review |
 | **Avg Time** | Wall-clock time per review | Matters for CI pipeline latency |
 | **Avg Token** | Total tokens consumed per review | Directly impacts API cost |
 
