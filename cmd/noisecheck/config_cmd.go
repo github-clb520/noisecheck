@@ -99,6 +99,7 @@ type Config struct {
 	CustomProviders map[string]ProviderEntry `json:"custom_providers,omitempty"`
 	Llm             LlmConfig                `json:"llm,omitempty"`
 	Language        string                   `json:"language,omitempty"`
+	ReviewLevel     string                   `json:"review_level,omitempty"`
 	Telemetry       *TelemetryConfig         `json:"telemetry,omitempty"`
 }
 

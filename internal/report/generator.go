@@ -6,6 +6,7 @@ import (
 	"html"
 	"html/template"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -38,8 +39,8 @@ type ViewComment struct {
 	Category       string
 	Content        string
 	Lines          string
-	SuggestionHTML string
-	ExistingHTML   string
+	SuggestionHTML template.HTML
+	ExistingHTML   template.HTML
 }
 
 // FileGroup groups comments by file path.
@@ -59,6 +60,8 @@ type SevCount struct {
 
 // ReportData is the root template data.
 type ReportData struct {
+	Title           string
+	Lang            string
 	FilesReviewed   int
 	TotalComments   int
 	TotalTokens     int64
@@ -69,70 +72,69 @@ type ReportData struct {
 
 // Generate creates an HTML report from review comments and writes to path.
 func Generate(path string, comments []model.LlmComment, filesReviewed int, totalTokens int64, duration time.Duration) error {
-	// Build severity counts
+	// Single pass: resolve severity once, count, and group by file
 	sevCounts := make(map[string]int)
+	fileMap := make(map[string][]ViewComment)
+
 	for _, c := range comments {
 		sev := c.Severity
 		if sev == "" {
 			sev = model.KeywordSeverity(c.Content)
 		}
+		// Validate severity against known constants
+		if _, valid := severityLabel[sev]; !valid {
+			sev = model.SeverityDefault
+		}
 		sevCounts[sev]++
-	}
 
-	// Group comments by file
-	fileMap := make(map[string][]model.LlmComment)
-	for _, c := range comments {
+		label := severityLabel[sev]
+		if label == "" {
+			label = sev
+		}
+		cat := categoryLabel[strings.ToLower(c.Category)]
+		if cat == "" {
+			cat = c.Category
+		}
+
+		lines := ""
+		if c.StartLine > 0 {
+			if c.EndLine > c.StartLine {
+				lines = formatInt(c.StartLine) + "-" + formatInt(c.EndLine)
+			} else {
+				lines = formatInt(c.StartLine)
+			}
+		}
+
+		vc := ViewComment{
+			Severity:       sev,
+			SevLabel:       label,
+			Category:       cat,
+			Content:        c.Content, // html/template auto-escapes
+			Lines:          lines,
+			SuggestionHTML: codeToHTML(c.SuggestionCode, "add"),
+			ExistingHTML:   codeToHTML(c.ExistingCode, "del"),
+		}
+
 		p := c.Path
 		if p == "" {
 			p = "(unknown)"
 		}
-		fileMap[p] = append(fileMap[p], c)
+		fileMap[p] = append(fileMap[p], vc)
 	}
 
-	// Build file groups
-	fileIndex := 0
-	var fileGroups []FileGroup
-	for path, pathComments := range fileMap {
-		var vcs []ViewComment
-		for _, c := range pathComments {
-			sev := c.Severity
-			if sev == "" {
-				sev = model.KeywordSeverity(c.Content)
-			}
-			label := severityLabel[sev]
-			if label == "" {
-				label = sev
-			}
-			cat := categoryLabel[strings.ToLower(c.Category)]
-			if cat == "" {
-				cat = c.Category
-			}
+	// Build sorted file groups (by path ascending)
+	var paths []string
+	for p := range fileMap {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
 
-			lines := ""
-			if c.StartLine > 0 {
-				if c.EndLine > c.StartLine {
-					lines = formatInt(c.StartLine) + "-" + formatInt(c.EndLine)
-				} else {
-					lines = formatInt(c.StartLine)
-				}
-			}
-
-			vc := ViewComment{
-				Severity:       sev,
-				SevLabel:       label,
-				Category:       cat,
-				Content:        html.EscapeString(c.Content),
-				Lines:          lines,
-				SuggestionHTML: codeToHTML(c.SuggestionCode, "add"),
-				ExistingHTML:   codeToHTML(c.ExistingCode, "del"),
-			}
-			vcs = append(vcs, vc)
-		}
-
-		fileIndex++
+	fileGroups := make([]FileGroup, 0, len(paths))
+	for i, p := range paths {
+		vcs := fileMap[p]
 		fileGroups = append(fileGroups, FileGroup{
-			ID:       formatInt(fileIndex),
-			Path:     html.EscapeString(path),
+			ID:       formatInt(i + 1),
+			Path:     p, // html/template auto-escapes
 			Count:    len(vcs),
 			Comments: vcs,
 		})
@@ -152,6 +154,8 @@ func Generate(path string, comments []model.LlmComment, filesReviewed int, total
 	}
 
 	data := ReportData{
+		Title:           "NoiseCheck 审查报告",
+		Lang:            "zh-CN",
 		FilesReviewed:   filesReviewed,
 		TotalComments:   len(comments),
 		TotalTokens:     totalTokens,
@@ -177,11 +181,17 @@ func Generate(path string, comments []model.LlmComment, filesReviewed int, total
 	}
 	defer f.Close()
 
-	return tmpl.Execute(f, data)
+	err = tmpl.Execute(f, data)
+	if err != nil {
+		return err
+	}
+
+	// Sync to disk to ensure the file is fully flushed
+	return f.Sync()
 }
 
 // codeToHTML wraps code in syntax-colored HTML spans.
-func codeToHTML(code, mode string) string {
+func codeToHTML(code, mode string) template.HTML {
 	if code == "" {
 		return ""
 	}
@@ -192,7 +202,7 @@ func codeToHTML(code, mode string) string {
 	} else if mode == "del" {
 		klass = ` class="code-del"`
 	}
-	return `<span` + klass + `>` + escaped + `</span>`
+	return template.HTML(`<span` + klass + `>` + escaped + `</span>`)
 }
 
 // formatInt is a simple int formatter (avoids importing strconv for small numbers).

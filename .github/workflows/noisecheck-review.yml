@@ -2,10 +2,12 @@
 # 在 PR 上自动运行代码审查，以 PR 评论形式输出结果
 name: NoiseCheck Review
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-  pull_request_target:
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -15,6 +17,7 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,15 +29,17 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Run Code Review
-        run: |
-          nc review --from ${{ github.event.pull_request.base.sha }} \
-                    --to ${{ github.event.pull_request.head.sha }} \
-                    --format markdown \
-                    --audience agent > review-report.md
         env:
           NC_LLM_URL: ${{ secrets.NC_LLM_URL }}
           NC_LLM_TOKEN: ${{ secrets.NC_LLM_TOKEN }}
           NC_LLM_MODEL: ${{ secrets.NC_LLM_MODEL || 'claude-sonnet-4-6' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          nc review --from "$BASE_SHA" \
+                    --to "$HEAD_SHA" \
+                    --format markdown \
+                    --audience agent > review-report.md
 
       - name: Post Review Comment
         uses: actions/github-script@v7

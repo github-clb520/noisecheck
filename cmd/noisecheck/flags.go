@@ -169,6 +169,12 @@ func parseReviewFlags(args []string) (reviewOptions, error) {
 		return opts, fmt.Errorf("invalid --audience value %q: must be 'human' or 'agent'", opts.audience)
 	}
 
+	switch opts.outputFormat {
+	case "text", "json", "markdown":
+	default:
+		return opts, fmt.Errorf("invalid --format value %q: must be 'text', 'json' or 'markdown'", opts.outputFormat)
+	}
+
 	const minMaxTools = 10
 	if opts.maxTools < 0 {
 		return opts, fmt.Errorf("--max-tools must be a non-negative integer (0 means use template default)")

@@ -16,7 +16,7 @@ var (
 	gitGrepMaxCount = 100
 	gitGrepTimeout  = 10 * time.Second
 
-	// gitSupportsEndOfOptions is true when git version >= 2.44.0.
+	// gitSupportsEndOfOptions is lazily evaluated when first needed.
 	// --end-of-options was introduced in Git 2.44 and prevents refs that
 	// look like flags (e.g. "--help") from being misinterpreted.
 	gitSupportsEndOfOptions = sync.OnceValue(func() bool {
@@ -25,8 +25,8 @@ var (
 		if err != nil {
 			return false
 		}
-			v := checkGitVersion(string(out))
-			return v[0] > 2 || (v[0] == 2 && (v[1] > 44 || (v[1] == 44 && v[2] >= 0)))
+		v := checkGitVersion(string(out))
+		return v[0] > 2 || (v[0] == 2 && v[1] >= 44)
 	})
 )
 
@@ -47,10 +47,6 @@ func checkGitVersion(v string) [3]int {
 		patch, _ = strconv.Atoi(ver[2])
 	}
 	return [3]int{major, minor, patch}
-}
-
-func init() {
-	_ = gitSupportsEndOfOptions // warm the cache
 }
 
 // CodeSearchProvider performs text search across the repository using git grep.

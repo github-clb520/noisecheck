@@ -6,7 +6,6 @@ import (
 )
 
 func runInit(args []string) error {
-	// Check if already configured
 	configPath, err := defaultConfigPath()
 	if err != nil {
 		return err
@@ -19,9 +18,12 @@ func runInit(args []string) error {
 
 	// If config exists and has LLM set, ask if user wants to reconfigure
 	if cfg.Provider != "" || cfg.Llm.URL != "" {
-		fmt.Println("NoiseCheck 已经配置过 LLM 提供商。")
-		fmt.Println("如需重新配置，请运行: nc config provider")
-		fmt.Println("跳转到其他设置...")
+		fmt.Println("NoiseCheck 已配置过 LLM 提供商。")
+		reconfig := askChoice("是否重新配置？", []string{"是，重新配置", "否，跳过 LLM 配置"}, "否，跳过 LLM 配置")
+		if reconfig != "是，重新配置" {
+			fmt.Println("跳转到语言和审查级别设置...")
+			return runBasicWizard(configPath, cfg)
+		}
 	}
 
 	// Check if we can run the TUI
@@ -33,6 +35,35 @@ func runInit(args []string) error {
 
 	// Run the TUI init wizard
 	return runInitWizard(configPath, cfg)
+}
+
+// runBasicWizard allows reconfiguring language and level without LLM setup.
+func runBasicWizard(configPath string, cfg *Config) error {
+	lang := askChoice("审查语言", []string{"中文（推荐）", "English"}, "中文（推荐）")
+	switch lang {
+	case "中文（推荐）":
+		cfg.Language = "Chinese"
+	case "English":
+		cfg.Language = "English"
+	}
+
+	level := askChoice("审查严格程度", []string{
+		"标准 - 平衡质量和性能（推荐）",
+		"严格 - 最全面审查（最多 LLM 调用）",
+		"轻量 - 快速扫描（适合 CI）",
+	}, "标准 - 平衡质量和性能（推荐）")
+	cfg.ReviewLevel = map[string]string{
+		"标准 - 平衡质量和性能（推荐）":       "standard",
+		"严格 - 最全面审查（最多 LLM 调用）":   "strict",
+		"轻量 - 快速扫描（适合 CI）":        "light",
+	}[level]
+
+	if err := saveConfig(configPath, cfg); err != nil {
+		return fmt.Errorf("save config: %w", err)
+	}
+
+	fmt.Println("\n✅ 配置已保存。")
+	return nil
 }
 
 func runInitWizard(configPath string, cfg *Config) error {
@@ -59,8 +90,16 @@ func runInitWizard(configPath string, cfg *Config) error {
 		"严格 - 最全面审查（最多 LLM 调用）",
 		"轻量 - 快速扫描（适合 CI）",
 	}, "标准 - 平衡质量和性能（推荐）")
+	cfg.ReviewLevel = map[string]string{
+		"标准 - 平衡质量和性能（推荐）":       "standard",
+		"严格 - 最全面审查（最多 LLM 调用）":   "strict",
+		"轻量 - 快速扫描（适合 CI）":        "light",
+	}[level]
 
-	_ = level // Will be used when we add level config
+	// Save language and level before proceeding to provider config
+	if err := saveConfig(configPath, cfg); err != nil {
+		return fmt.Errorf("save language config: %w", err)
+	}
 
 	// Step 3: API Key setup
 	fmt.Println("\n📡 LLM 提供商配置")
@@ -85,9 +124,9 @@ func runInitWizard(configPath string, cfg *Config) error {
 	return nil
 }
 
-// isInteractive returns true if we're in a terminal.
+// isInteractive returns true if stdin is a terminal.
 func isInteractive() bool {
-	info, err := os.Stdout.Stat()
+	info, err := os.Stdin.Stat()
 	if err != nil {
 		return false
 	}

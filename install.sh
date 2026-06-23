@@ -32,7 +32,7 @@ main() {
     if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
       INSTALL_DIR="/usr/local/bin"
     else
-      INSTALL_DIR="${HOME}/.local/bin"
+      INSTALL_DIR="${HOME:-}/.local/bin"
     fi
   fi
 

@@ -230,10 +230,18 @@ type jsonOutput struct {
 	Warnings []agent.AgentWarning `json:"warnings,omitempty"`
 }
 
+// ensureNonNilComments returns an empty slice instead of nil for JSON consistency.
+func ensureNonNilComments(c []model.LlmComment) []model.LlmComment {
+	if c == nil {
+		return []model.LlmComment{}
+	}
+	return c
+}
+
 func outputJSON(comments []model.LlmComment) error {
 	out := jsonOutput{
 		Status:   "success",
-		Comments: comments,
+		Comments: ensureNonNilComments(comments),
 	}
 	if len(comments) == 0 {
 		out.Message = "No comments generated. Looks good to me."
@@ -247,7 +255,7 @@ func outputJSONWithWarnings(comments []model.LlmComment, warnings []agent.AgentW
 	filesReviewed, inputTokens, outputTokens, totalTokens, cacheReadTokens, cacheWriteTokens int64, duration time.Duration) error {
 	out := jsonOutput{
 		Status:   "success",
-		Comments: comments,
+		Comments: ensureNonNilComments(comments),
 		Summary: &jsonSummary{
 			FilesReviewed:    filesReviewed,
 			Comments:         int64(len(comments)),
@@ -323,13 +331,31 @@ func outputMarkdown(comments []model.LlmComment) {
 				lines = fmt.Sprintf(" L%d-%d", c.StartLine, c.EndLine)
 			}
 			fmt.Printf("%d. **`[%s]`** `%s%s`\n", i+1, sevLabel, path, lines)
-			fmt.Printf("   %s\n", c.Content)
+			fmt.Printf("   %s\n", sanitizeMarkdown(c.Content))
 			if c.SuggestionCode != "" {
-				fmt.Printf("   ```suggestion\n   %s\n   ```\n", c.SuggestionCode)
+				fmt.Printf("   ```suggestion\n   %s\n   ```\n", sanitizeMarkdown(c.SuggestionCode))
 			}
 			fmt.Println()
 		}
 	}
+}
+
+// sanitizeMarkdown escapes special Markdown characters in text content.
+func sanitizeMarkdown(s string) string {
+	if s == "" {
+		return ""
+	}
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "`", "\\`")
+	s = strings.ReplaceAll(s, "*", "\\*")
+	s = strings.ReplaceAll(s, "_", "\\_")
+	s = strings.ReplaceAll(s, "~", "\\~")
+	s = strings.ReplaceAll(s, "|", "\\|")
+	s = strings.ReplaceAll(s, "[", "\\[")
+	s = strings.ReplaceAll(s, "]", "\\]")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
 }
 
 func outputMarkdownWithWarnings(comments []model.LlmComment, warnings []agent.AgentWarning,
