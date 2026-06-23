@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/open-code-review/open-code-review/internal/config/template"
-	"github.com/open-code-review/open-code-review/internal/llm"
-	"github.com/open-code-review/open-code-review/internal/model"
+	"noisecheck/internal/config/template"
+	"noisecheck/internal/llm"
+	"noisecheck/internal/model"
 )
 
 type mockLLMClient struct {

@@ -1,4 +1,4 @@
-// OpenCodeReview is an AI-powered code review CLI tool.
+// NoiseCheck is an AI-powered code review CLI tool.
 // It reads git diffs, sends them to a configurable LLM service, and generates review comments.
 package main
 
@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/open-code-review/open-code-review/internal/llm"
-	"github.com/open-code-review/open-code-review/internal/telemetry"
+	"noisecheck/internal/llm"
+	"noisecheck/internal/telemetry"
 )
 
 func main() {
@@ -46,6 +46,8 @@ func dispatch() error {
 		return nil
 	case "review", "r":
 		return runReview(args[1:])
+	case "init":
+		return runInit(args[1:])
 	case "config":
 		return runConfig(args[1:])
 	case "llm":
@@ -58,17 +60,18 @@ func dispatch() error {
 		printTopLevelUsage()
 		return nil
 	default:
-		return fmt.Errorf("unknown command: %s\nRun 'ocr' for usage", args[0])
+		return fmt.Errorf("unknown command: %s\nRun 'nc' for usage", args[0])
 	}
 }
 
 func printTopLevelUsage() {
-	fmt.Println(`OpenCodeReview - AI-Powered Code Review CLI
+	fmt.Println(`NoiseCheck - AI-Powered Code Review CLI
 
 Usage:
-  ocr [command]
+  nc [command]
 
 Commands:
+  init         Initialize configuration (interactive wizard)
   review, r    Start a code review
   rules        Inspect and debug review rules
   config       Manage configuration settings
@@ -77,19 +80,23 @@ Commands:
   version      Show version information
 
 Examples:
-  ocr review --from master --to dev        Review diff range
-  ocr review --commit abc123               Review a single commit
-  ocr config provider                      Interactive provider setup
-  ocr config model                         Interactive model selection
-  ocr config set llm.model opus-4-6        Set a config value
-  ocr llm test                             Test LLM connectivity
-  ocr llm providers                        List built-in providers
-  ocr version                              Show version info
+  nc init                                Interactive setup wizard
+  nc review --from master --to dev       Review diff range
+  nc review --commit abc123              Review a single commit
+  nc review --format markdown            CI-friendly markdown output
+  nc review --report report.html         Generate HTML report
+  nc config provider                     Interactive provider setup
+  nc config model                        Interactive model selection
+  nc config set llm.model opus-4-6       Set a config value
+  nc llm test                            Test LLM connectivity
+  nc llm providers                       List built-in providers
+  nc version                             Show version info
 
-Use "ocr review -h" for more information about review.
-Use "ocr rules -h" for more information about rules.
-Use "ocr config" for more information about config.
-Use "ocr llm" for more information about LLM utilities.
+Use "nc init" for interactive setup.
+Use "nc review -h" for more information about review.
+Use "nc rules -h" for more information about rules.
+Use "nc config" for more information about config.
+Use "nc llm" for more information about LLM utilities.
 
-GitHub: https://github.com/alibaba/open-code-review`)
+GitHub: https://github.com/github-clb520/noisecheck`)
 }

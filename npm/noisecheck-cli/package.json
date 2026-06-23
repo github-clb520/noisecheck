@@ -1,0 +1,31 @@
+{
+  "name": "@noisecheck/cli",
+  "version": "1.0.0",
+  "description": "NoiseCheck — Zero-noise AI code review CLI (binary installer)",
+  "keywords": ["code-review", "ai", "lint", "security", "static-analysis"],
+  "homepage": "https://github.com/github-clb520/noisecheck",
+  "bugs": { "url": "https://github.com/github-clb520/noisecheck/issues" },
+  "license": "Apache-2.0",
+  "author": "pizza_cat",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/github-clb520/noisecheck.git"
+  },
+  "bin": {
+    "noisecheck": "./bin/noisecheck.js",
+    "nc": "./bin/noisecheck.js"
+  },
+  "files": ["bin/"],
+  "scripts": {
+    "postinstall": "node ./bin/noisecheck.js --install"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": ["linux", "darwin", "win32"],
+  "cpu": ["x64", "arm64"],
+  "preferUnplugged": true,
+  "publishConfig": {
+    "access": "public"
+  }
+}

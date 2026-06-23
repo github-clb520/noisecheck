@@ -33,9 +33,9 @@ func TestStripModelSuffix(t *testing.T) {
 }
 
 func TestResolveEndpoint_CCEnvStripsModelSuffix(t *testing.T) {
-	t.Setenv("OCR_LLM_URL", "")
-	t.Setenv("OCR_LLM_TOKEN", "")
-	t.Setenv("OCR_LLM_MODEL", "")
+	t.Setenv("NC_LLM_URL", "")
+	t.Setenv("NC_LLM_TOKEN", "")
+	t.Setenv("NC_LLM_MODEL", "")
 	t.Setenv("ANTHROPIC_BASE_URL", "https://api.example.com")
 	t.Setenv("ANTHROPIC_AUTH_TOKEN", "test-token")
 	t.Setenv("ANTHROPIC_MODEL", "claude-opus-4-7[1m]")
@@ -53,9 +53,9 @@ func TestResolveEndpoint_CCEnvStripsModelSuffix(t *testing.T) {
 }
 
 func TestResolveEndpoint_CCEnvCleanModelUnchanged(t *testing.T) {
-	t.Setenv("OCR_LLM_URL", "")
-	t.Setenv("OCR_LLM_TOKEN", "")
-	t.Setenv("OCR_LLM_MODEL", "")
+	t.Setenv("NC_LLM_URL", "")
+	t.Setenv("NC_LLM_TOKEN", "")
+	t.Setenv("NC_LLM_MODEL", "")
 	t.Setenv("ANTHROPIC_BASE_URL", "https://api.example.com")
 	t.Setenv("ANTHROPIC_AUTH_TOKEN", "test-token")
 	t.Setenv("ANTHROPIC_MODEL", "claude-opus-4-7")
@@ -70,9 +70,9 @@ func TestResolveEndpoint_CCEnvCleanModelUnchanged(t *testing.T) {
 }
 
 func TestResolveEndpoint_OCREnvStripsModelSuffix(t *testing.T) {
-	t.Setenv("OCR_LLM_URL", "https://api.example.com/v1/messages")
-	t.Setenv("OCR_LLM_TOKEN", "test-token")
-	t.Setenv("OCR_LLM_MODEL", "claude-haiku[2m]")
+	t.Setenv("NC_LLM_URL", "https://api.example.com/v1/messages")
+	t.Setenv("NC_LLM_TOKEN", "test-token")
+	t.Setenv("NC_LLM_MODEL", "claude-haiku[2m]")
 
 	ep, err := ResolveEndpoint(filepath.Join(t.TempDir(), "nonexistent.json"))
 	if err != nil {
@@ -81,15 +81,15 @@ func TestResolveEndpoint_OCREnvStripsModelSuffix(t *testing.T) {
 	if ep.Model != "claude-haiku" {
 		t.Errorf("expected model %q, got %q", "claude-haiku", ep.Model)
 	}
-	if ep.Source != "OCR environment" {
-		t.Errorf("expected source %q, got %q", "OCR environment", ep.Source)
+	if ep.Source != "NC env" {
+		t.Errorf("expected source %q, got %q", "NC env", ep.Source)
 	}
 }
 
 func TestResolveEndpoint_ConfigFileStripsModelSuffix(t *testing.T) {
-	t.Setenv("OCR_LLM_URL", "")
-	t.Setenv("OCR_LLM_TOKEN", "")
-	t.Setenv("OCR_LLM_MODEL", "")
+	t.Setenv("NC_LLM_URL", "")
+	t.Setenv("NC_LLM_TOKEN", "")
+	t.Setenv("NC_LLM_MODEL", "")
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 	t.Setenv("ANTHROPIC_AUTH_TOKEN", "")
 	t.Setenv("ANTHROPIC_MODEL", "")
@@ -112,15 +112,15 @@ func TestResolveEndpoint_ConfigFileStripsModelSuffix(t *testing.T) {
 	if ep.Model != "gpt-4" {
 		t.Errorf("expected model %q, got %q", "gpt-4", ep.Model)
 	}
-	if ep.Source != "OCR config file" {
-		t.Errorf("expected source %q, got %q", "OCR config file", ep.Source)
+	if ep.Source != ".noisecheck config" {
+		t.Errorf("expected source %q, got %q", ".noisecheck config", ep.Source)
 	}
 }
 
 func TestResolveEndpoint_ConfigAnthropicDefaultsToAuthorization(t *testing.T) {
-	t.Setenv("OCR_LLM_URL", "")
-	t.Setenv("OCR_LLM_TOKEN", "")
-	t.Setenv("OCR_LLM_MODEL", "")
+	t.Setenv("NC_LLM_URL", "")
+	t.Setenv("NC_LLM_TOKEN", "")
+	t.Setenv("NC_LLM_MODEL", "")
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 	t.Setenv("ANTHROPIC_AUTH_TOKEN", "")
 	t.Setenv("ANTHROPIC_MODEL", "")
@@ -148,9 +148,9 @@ func TestResolveEndpoint_ConfigAnthropicDefaultsToAuthorization(t *testing.T) {
 }
 
 func TestResolveEndpoint_ConfigAuthHeaderOverrideToXAPIKey(t *testing.T) {
-	t.Setenv("OCR_LLM_URL", "")
-	t.Setenv("OCR_LLM_TOKEN", "")
-	t.Setenv("OCR_LLM_MODEL", "")
+	t.Setenv("NC_LLM_URL", "")
+	t.Setenv("NC_LLM_TOKEN", "")
+	t.Setenv("NC_LLM_MODEL", "")
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 	t.Setenv("ANTHROPIC_AUTH_TOKEN", "")
 	t.Setenv("ANTHROPIC_MODEL", "")
@@ -179,9 +179,9 @@ func TestResolveEndpoint_ConfigAuthHeaderOverrideToXAPIKey(t *testing.T) {
 }
 
 func TestResolveEndpoint_ConfigOpenAIIgnoresAuthHeader(t *testing.T) {
-	t.Setenv("OCR_LLM_URL", "")
-	t.Setenv("OCR_LLM_TOKEN", "")
-	t.Setenv("OCR_LLM_MODEL", "")
+	t.Setenv("NC_LLM_URL", "")
+	t.Setenv("NC_LLM_TOKEN", "")
+	t.Setenv("NC_LLM_MODEL", "")
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 	t.Setenv("ANTHROPIC_AUTH_TOKEN", "")
 	t.Setenv("ANTHROPIC_MODEL", "")
@@ -213,10 +213,10 @@ func TestResolveEndpoint_ConfigOpenAIIgnoresAuthHeader(t *testing.T) {
 }
 
 func TestResolveEndpoint_OCREnvAuthHeader(t *testing.T) {
-	t.Setenv("OCR_LLM_URL", "https://api.anthropic.com")
-	t.Setenv("OCR_LLM_TOKEN", "oauth-token")
-	t.Setenv("OCR_LLM_MODEL", "claude-opus-4-6")
-	t.Setenv("OCR_LLM_AUTH_HEADER", "authorization")
+	t.Setenv("NC_LLM_URL", "https://api.anthropic.com")
+	t.Setenv("NC_LLM_TOKEN", "oauth-token")
+	t.Setenv("NC_LLM_MODEL", "claude-opus-4-6")
+	t.Setenv("NC_LLM_AUTH_HEADER", "authorization")
 
 	ep, err := ResolveEndpoint(filepath.Join(t.TempDir(), "nonexistent.json"))
 	if err != nil {
@@ -228,11 +228,11 @@ func TestResolveEndpoint_OCREnvAuthHeader(t *testing.T) {
 }
 
 func TestResolveEndpoint_OCREnvOpenAIIgnoresAuthHeader(t *testing.T) {
-	t.Setenv("OCR_LLM_URL", "https://api.openai.com/v1")
-	t.Setenv("OCR_LLM_TOKEN", "openai-token")
-	t.Setenv("OCR_LLM_MODEL", "gpt-4")
-	t.Setenv("OCR_LLM_AUTH_HEADER", "x-api-key")
-	t.Setenv("OCR_USE_ANTHROPIC", "false")
+	t.Setenv("NC_LLM_URL", "https://api.openai.com/v1")
+	t.Setenv("NC_LLM_TOKEN", "openai-token")
+	t.Setenv("NC_LLM_MODEL", "gpt-4")
+	t.Setenv("NC_LLM_AUTH_HEADER", "x-api-key")
+	t.Setenv("NC_USE_ANTHROPIC", "false")
 
 	ep, err := ResolveEndpoint(filepath.Join(t.TempDir(), "nonexistent.json"))
 	if err != nil {
@@ -251,7 +251,7 @@ func TestResolveEndpoint_OCREnvOpenAIIgnoresAuthHeader(t *testing.T) {
 func clearAllEnv(t *testing.T) {
 	t.Helper()
 	for _, k := range []string{
-		"OCR_LLM_URL", "OCR_LLM_TOKEN", "OCR_LLM_MODEL", "OCR_LLM_AUTH_HEADER", "OCR_USE_ANTHROPIC",
+		"NC_LLM_URL", "NC_LLM_TOKEN", "NC_LLM_MODEL", "NC_LLM_AUTH_HEADER", "NC_USE_ANTHROPIC",
 		"ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_MODEL",
 		"ANTHROPIC_API_KEY", "OPENAI_API_KEY",
 	} {
@@ -583,8 +583,8 @@ func TestResolveEndpoint_LegacyLlmStillWorks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if ep.Source != "OCR config file" {
-		t.Errorf("Source = %q, want %q", ep.Source, "OCR config file")
+	if ep.Source != ".noisecheck config" {
+		t.Errorf("Source = %q, want %q", ep.Source, ".noisecheck config")
 	}
 	if ep.Token != "legacy-token" {
 		t.Errorf("Token = %q, want %q", ep.Token, "legacy-token")

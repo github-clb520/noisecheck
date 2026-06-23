@@ -1,0 +1,28 @@
+# NoiseCheck — GitLab CI 集成模板
+# 在 MR 上自动运行代码审查
+stages:
+  - review
+
+noisecheck-review:
+  stage: review
+  image: alpine:latest
+  only:
+    - merge_requests
+  before_script:
+    - apk add --no-cache curl bash
+    - curl -fsSL https://raw.githubusercontent.com/github-clb520/noisecheck/main/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+  script:
+    - nc review --from $CI_MERGE_REQUEST_DIFF_BASE_SHA \
+                --to $CI_MERGE_REQUEST_DIFF_HEAD_SHA \
+                --format markdown \
+                --audience agent \
+                > review-report.md
+    - cat review-report.md >> $CI_JOB_ARTIFACTS/review-report.md
+  artifacts:
+    paths:
+      - review-report.md
+  variables:
+    NC_LLM_URL: $NC_LLM_URL
+    NC_LLM_TOKEN: $NC_LLM_TOKEN
+    NC_LLM_MODEL: "claude-sonnet-4-6"

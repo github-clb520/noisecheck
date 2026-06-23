@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/open-code-review/open-code-review/internal/config/template"
-	"github.com/open-code-review/open-code-review/internal/llm"
-	"github.com/open-code-review/open-code-review/internal/model"
-	"github.com/open-code-review/open-code-review/internal/stdout"
+	"noisecheck/internal/config/template"
+	"noisecheck/internal/llm"
+	"noisecheck/internal/model"
+	"noisecheck/internal/stdout"
 )
 
 // ReLocateComment calls the LLM to regenerate a precise existing_code snippet
@@ -50,7 +50,7 @@ func ReLocateComment(
 		MaxTokens: maxTokens,
 	})
 	if err != nil {
-		fmt.Fprintf(stdout.Writer(), "[ocr] Re-location LLM call failed for %s: %v\n", cm.Path, err)
+		fmt.Fprintf(stdout.Writer(), "[NC] Re-location LLM call failed for %s: %v\n", cm.Path, err)
 		return false, nil, messages
 	}
 

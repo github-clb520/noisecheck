@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/open-code-review/open-code-review/internal/llm"
-	"github.com/open-code-review/open-code-review/internal/session"
+	"noisecheck/internal/llm"
+	"noisecheck/internal/session"
 )
 
 func TestStripEmptyPlanBlock(t *testing.T) {

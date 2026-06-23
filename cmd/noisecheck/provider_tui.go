@@ -10,7 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/open-code-review/open-code-review/internal/llm"
+	"noisecheck/internal/llm"
 )
 
 type tuiStep int
@@ -1246,7 +1246,7 @@ var (
 				Foreground(lipgloss.Color("8"))
 )
 
-// --- Model-only TUI (for `ocr config model`) ---
+// --- Model-only TUI (for `nc config model`) ---
 
 type modelTUIModel struct {
 	width  int

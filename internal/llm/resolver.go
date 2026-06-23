@@ -20,13 +20,13 @@ type ResolvedEndpoint struct {
 	ExtraBody  map[string]any // vendor-specific request body fields
 }
 
-// Environment variable names for OCR-specific configuration.
+// Environment variable names for NC-specific configuration.
 const (
-	envOCRLLMURL        = "OCR_LLM_URL"
-	envOCRLLMToken      = "OCR_LLM_TOKEN"
-	envOCRLLMModel      = "OCR_LLM_MODEL"
-	envOCRLLMAuthHeader = "OCR_LLM_AUTH_HEADER"
-	envOCRUseAnthropic  = "OCR_USE_ANTHROPIC"
+	envNCLLMURL        = "NC_LLM_URL"
+	envNCLLMToken      = "NC_LLM_TOKEN"
+	envNCLLMModel      = "NC_LLM_MODEL"
+	envNCLLMAuthHeader = "NC_LLM_AUTH_HEADER"
+	envNCUseAnthropic  = "NC_USE_ANTHROPIC"
 )
 
 // Environment variable names from Claude Code configuration.
@@ -53,8 +53,8 @@ func ResolveEndpointWithModelOverride(configPath, modelOverride string) (Resolve
 		name string
 		fn   func() (ResolvedEndpoint, bool, error)
 	}{
-		{"OCR config file", func() (ResolvedEndpoint, bool, error) { return tryOCRConfig(configPath, modelOverride) }},
-		{"OCR environment", func() (ResolvedEndpoint, bool, error) { return tryOCREnv(modelOverride) }},
+		{".noisecheck config", func() (ResolvedEndpoint, bool, error) { return tryNCConfig(configPath, modelOverride) }},
+		{"NC env", func() (ResolvedEndpoint, bool, error) { return tryNCEnv(modelOverride) }},
 		{"Claude Code environment", func() (ResolvedEndpoint, bool, error) { return tryCCEnv(modelOverride) }},
 		{"Shell rc file", func() (ResolvedEndpoint, bool, error) { return tryShellRC(modelOverride) }},
 	}
@@ -73,14 +73,14 @@ func ResolveEndpointWithModelOverride(configPath, modelOverride string) (Resolve
 		}
 	}
 
-	return ResolvedEndpoint{}, fmt.Errorf("no valid LLM endpoint configured; one of OCR_LLM_URL/OCR_LLM_TOKEN/OCR_LLM_MODEL, ~/.opencodereview/config.json, or ANTHROPIC_BASE_URL/ANTHROPIC_AUTH_TOKEN/ANTHROPIC_MODEL must be set")
+	return ResolvedEndpoint{}, fmt.Errorf("no valid LLM endpoint configured; one of NC_LLM_URL/NC_LLM_TOKEN/NC_LLM_MODEL, ~/.noisecheck/config.json, or ANTHROPIC_BASE_URL/ANTHROPIC_AUTH_TOKEN/ANTHROPIC_MODEL must be set")
 }
 
-// tryOCREnv reads OCR-specific environment variables.
-func tryOCREnv(modelOverride string) (ResolvedEndpoint, bool, error) {
-	url := os.Getenv(envOCRLLMURL)
-	token := os.Getenv(envOCRLLMToken)
-	model := os.Getenv(envOCRLLMModel)
+// tryNCEnv reads NC-specific environment variables.
+func tryNCEnv(modelOverride string) (ResolvedEndpoint, bool, error) {
+	url := os.Getenv(envNCLLMURL)
+	token := os.Getenv(envNCLLMToken)
+	model := os.Getenv(envNCLLMModel)
 	if modelOverride != "" {
 		model = modelOverride
 	}
@@ -89,7 +89,7 @@ func tryOCREnv(modelOverride string) (ResolvedEndpoint, bool, error) {
 	}
 
 	useAnthropic := true // default true
-	if v := os.Getenv(envOCRUseAnthropic); v != "" {
+	if v := os.Getenv(envNCUseAnthropic); v != "" {
 		lower := strings.ToLower(v)
 		useAnthropic = lower == "true" || lower == "1" || lower == "yes"
 	}
@@ -102,16 +102,16 @@ func tryOCREnv(modelOverride string) (ResolvedEndpoint, bool, error) {
 	var authHeader string
 	if protocol == "anthropic" {
 		var err error
-		authHeader, err = NormalizeAuthHeader(os.Getenv(envOCRLLMAuthHeader))
+		authHeader, err = NormalizeAuthHeader(os.Getenv(envNCLLMAuthHeader))
 		if err != nil {
-			return ResolvedEndpoint{}, false, fmt.Errorf("OCR environment: %w", err)
+			return ResolvedEndpoint{}, false, fmt.Errorf("NC environment: %w", err)
 		}
 		if authHeader == "" {
 			authHeader = defaultAuthHeader(protocol)
 		}
 	}
 
-	return ResolvedEndpoint{URL: url, Token: token, Model: model, Protocol: protocol, AuthHeader: authHeader, Source: "OCR environment"}, true, nil
+	return ResolvedEndpoint{URL: url, Token: token, Model: model, Protocol: protocol, AuthHeader: authHeader, Source: "NC env"}, true, nil
 }
 
 // llmFileConfig represents the llm section in config.json.
@@ -143,8 +143,8 @@ type configFile struct {
 	Llm             llmFileConfig                  `json:"llm,omitempty"`
 }
 
-// tryOCRConfig reads the OCR config file.
-func tryOCRConfig(path, modelOverride string) (ResolvedEndpoint, bool, error) {
+// tryNCConfig reads the .noisecheck config file.
+func tryNCConfig(path, modelOverride string) (ResolvedEndpoint, bool, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -249,7 +249,7 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 	}
 
 	if model == "" {
-		return ResolvedEndpoint{}, false, fmt.Errorf("provider %q has no model configured; run 'ocr config model' to select one or pass --model", cfg.Provider)
+		return ResolvedEndpoint{}, false, fmt.Errorf("provider %q has no model configured; run 'nc config model' to select one or pass --model", cfg.Provider)
 	}
 
 	if protocol == "anthropic" {
@@ -314,14 +314,14 @@ func tryLegacyLlmConfig(cfg configFile, modelOverride string) (ResolvedEndpoint,
 		var err error
 		authHeader, err = NormalizeAuthHeader(cfg.Llm.AuthHeader)
 		if err != nil {
-			return ResolvedEndpoint{}, false, fmt.Errorf("OCR config file: %w", err)
+			return ResolvedEndpoint{}, false, fmt.Errorf(".noisecheck config: %w", err)
 		}
 		if authHeader == "" {
 			authHeader = defaultAuthHeader(protocol)
 		}
 	}
 
-	return ResolvedEndpoint{URL: cfg.Llm.URL, Token: cfg.Llm.AuthToken, Model: model, Protocol: protocol, AuthHeader: authHeader, Source: "OCR config file", ExtraBody: cfg.Llm.ExtraBody}, true, nil
+	return ResolvedEndpoint{URL: cfg.Llm.URL, Token: cfg.Llm.AuthToken, Model: model, Protocol: protocol, AuthHeader: authHeader, Source: ".noisecheck config", ExtraBody: cfg.Llm.ExtraBody}, true, nil
 }
 
 // tryCCEnv reads Claude Code environment variables.

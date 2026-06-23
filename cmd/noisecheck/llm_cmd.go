@@ -7,8 +7,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/open-code-review/open-code-review/internal/config/testconnection"
-	"github.com/open-code-review/open-code-review/internal/llm"
+	"noisecheck/internal/config/testconnection"
+	"noisecheck/internal/llm"
 )
 
 func runLLM(args []string) error {
@@ -24,7 +24,7 @@ func runLLM(args []string) error {
 		runLLMProviders()
 		return nil
 	default:
-		return fmt.Errorf("unknown llm sub-command: %s\nRun 'ocr llm' for usage", args[0])
+		return fmt.Errorf("unknown llm sub-command: %s\nRun 'nc llm' for usage", args[0])
 	}
 }
 
@@ -108,21 +108,21 @@ func runLLMProviders() {
 	if err := w.Flush(); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: failed to flush output: %v\n", err)
 	}
-	fmt.Println("\nUse 'ocr config provider' to configure a provider interactively.")
-	fmt.Println("Use 'ocr config set provider <name>' to switch providers non-interactively.")
+	fmt.Println("\nUse 'nc config provider' to configure a provider interactively.")
+	fmt.Println("Use 'nc config set provider <name>' to switch providers non-interactively.")
 }
 
 func printLLMUsage() {
 	fmt.Println(`LLM utility commands.
 
 Usage:
-  ocr llm <sub-command>
+  nc llm <sub-command>
 
 Sub-commands:
   test         Send a test conversation to the configured LLM model
   providers    List all built-in LLM providers
 
 Examples:
-  ocr llm test                   Verify LLM connectivity and configuration
-  ocr llm providers              List available built-in providers`)
+  nc llm test                   Verify LLM connectivity and configuration
+  nc llm providers              List available built-in providers`)
 }

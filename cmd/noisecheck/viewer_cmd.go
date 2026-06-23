@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/open-code-review/open-code-review/internal/viewer"
+	"noisecheck/internal/viewer"
 )
 
 type viewerOptions struct {
@@ -12,7 +12,7 @@ type viewerOptions struct {
 }
 
 func parseViewerFlags(args []string) (viewerOptions, error) {
-	a := newOcrFlagSet("ocr viewer")
+	a := newNcFlagSet("nc viewer")
 
 	opts := viewerOptions{}
 	a.StringVar(&opts.addr, "addr", "localhost:5483", "listen address")
@@ -35,7 +35,7 @@ func runViewer(args []string) error {
 		return nil
 	}
 
-	fmt.Printf("Open Code Review Viewer starting on http://%s\n", opts.addr)
+	fmt.Printf("NoiseCheck Viewer starting on http://%s\n", opts.addr)
 	return viewer.StartServer(opts.addr)
 }
 
@@ -43,13 +43,13 @@ func printViewerUsage() {
 	fmt.Println(`Session history WebUI viewer.
 
 Usage:
-  ocr viewer [flags]
-  ocr v [flags]              (alias)
+  nc viewer [flags]
+  nc v [flags]              (alias)
 
 Flags:
   --addr <address>           listen address (default: localhost:5483)
 
 Examples:
-  ocr viewer                     # start on default port
-  ocr viewer --addr :3000        # bind to all interfaces on port 3000`)
+  nc viewer                     # start on default port
+  nc viewer --addr :3000        # bind to all interfaces on port 3000`)
 }

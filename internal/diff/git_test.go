@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/open-code-review/open-code-review/internal/gitcmd"
+	"noisecheck/internal/gitcmd"
 )
 
 // runGitTest runs a git command in dir and fails the test on error.

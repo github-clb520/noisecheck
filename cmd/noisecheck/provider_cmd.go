@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/open-code-review/open-code-review/internal/llm"
+	"noisecheck/internal/llm"
 )
 
 func runConfigProvider() error {
@@ -73,7 +73,7 @@ func applyManualConfig(configPath string, cfg *Config, result providerTUIResult)
 	fmt.Println("\nTesting connection...")
 	if err := runLLMTest(); err != nil {
 		fmt.Fprintf(os.Stderr, "Connection test failed: %v\n", err)
-		fmt.Fprintln(os.Stderr, "Configuration has been saved. Fix the issue and run 'ocr llm test' to re-verify.")
+		fmt.Fprintln(os.Stderr, "Configuration has been saved. Fix the issue and run 'nc llm test' to re-verify.")
 		return nil
 	}
 
@@ -126,11 +126,11 @@ func applyCustomProviderConfig(configPath string, cfg *Config, result providerTU
 	fmt.Println("\nTesting connection...")
 	if err := runLLMTest(); err != nil {
 		fmt.Fprintf(os.Stderr, "Connection test failed: %v\n", err)
-		fmt.Fprintln(os.Stderr, "Provider configuration has been saved. Fix the issue and run 'ocr llm test' to re-verify.")
+		fmt.Fprintln(os.Stderr, "Provider configuration has been saved. Fix the issue and run 'nc llm test' to re-verify.")
 		return nil
 	}
 
-	fmt.Println("\nTip: run 'ocr config model' to switch model later.")
+	fmt.Println("\nTip: run 'nc config model' to switch model later.")
 	return nil
 }
 
@@ -180,11 +180,11 @@ func applyOfficialProviderConfig(configPath string, cfg *Config, result provider
 	fmt.Println("\nTesting connection...")
 	if err := runLLMTest(); err != nil {
 		fmt.Fprintf(os.Stderr, "Connection test failed: %v\n", err)
-		fmt.Fprintln(os.Stderr, "Provider configuration has been saved. Fix the issue and run 'ocr llm test' to re-verify.")
+		fmt.Fprintln(os.Stderr, "Provider configuration has been saved. Fix the issue and run 'nc llm test' to re-verify.")
 		return nil
 	}
 
-	fmt.Println("\nTip: run 'ocr config model' to switch model later.")
+	fmt.Println("\nTip: run 'nc config model' to switch model later.")
 	return nil
 }
 
@@ -200,7 +200,7 @@ func runConfigModel() error {
 	}
 
 	if cfg.Provider == "" {
-		return fmt.Errorf("no provider configured. Run 'ocr config provider' first")
+		return fmt.Errorf("no provider configured. Run 'nc config provider' first")
 	}
 
 	currentModel := ""

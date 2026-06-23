@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/open-code-review/open-code-review/internal/llm"
+	"noisecheck/internal/llm"
 )
 
 // TaskType identifies the kind of LLM request within a file subtask.
@@ -119,7 +119,7 @@ func New(repoDir, gitBranch, model string, opts SessionOptions) *SessionHistory 
 
 	p, err := newJSONLWriter(sessionID, repoDir, gitBranch, model, opts)
 	if err != nil {
-		fmt.Printf("[ocr session] warning: failed to create session writer: %v\n", err)
+		fmt.Printf("[nc session] warning: failed to create session writer: %v\n", err)
 	} else {
 		sh.persist = p
 		p.WriteSessionStart(sh.StartTime)

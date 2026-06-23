@@ -1,4 +1,4 @@
-module github.com/open-code-review/open-code-review
+module noisecheck
 
 go 1.25.0
 

@@ -9,21 +9,21 @@ import (
 
 // --- custom flag set that supports short flags (-c, -f etc.) ---
 
-type ocrFlagSet struct {
+type ncFlagSet struct {
 	fs       *flag.FlagSet
 	shortMap map[string]string // maps short key "c" -> full name "commit"
 	showHelp bool
 }
 
-func newOcrFlagSet(name string) *ocrFlagSet {
-	return &ocrFlagSet{
+func newNcFlagSet(name string) *ncFlagSet {
+	return &ncFlagSet{
 		fs:       flag.NewFlagSet(name, flag.ContinueOnError),
 		shortMap: make(map[string]string),
 	}
 }
 
 // StringVarP registers --name with optional short form -s.
-func (a *ocrFlagSet) StringVarP(p *string, name, shorthand string, value, usage string) {
+func (a *ncFlagSet) StringVarP(p *string, name, shorthand string, value, usage string) {
 	suffix := ""
 	if shorthand != "" {
 		a.shortMap[shorthand] = name
@@ -33,7 +33,7 @@ func (a *ocrFlagSet) StringVarP(p *string, name, shorthand string, value, usage 
 }
 
 // BoolVarP registers --name with optional short form -s.
-func (a *ocrFlagSet) BoolVarP(p *bool, name, shorthand string, value bool, usage string) {
+func (a *ncFlagSet) BoolVarP(p *bool, name, shorthand string, value bool, usage string) {
 	suffix := ""
 	if shorthand != "" {
 		a.shortMap[shorthand] = name
@@ -42,27 +42,27 @@ func (a *ocrFlagSet) BoolVarP(p *bool, name, shorthand string, value bool, usage
 	a.fs.BoolVar(p, name, value, usage+suffix)
 }
 
-func (a *ocrFlagSet) StringVar(p *string, name string, value string, usage string) {
+func (a *ncFlagSet) StringVar(p *string, name string, value string, usage string) {
 	a.fs.StringVar(p, name, value, usage)
 }
 
-func (a *ocrFlagSet) BoolVar(p *bool, name string, value bool, usage string) {
+func (a *ncFlagSet) BoolVar(p *bool, name string, value bool, usage string) {
 	a.fs.BoolVar(p, name, value, usage)
 }
 
-func (a *ocrFlagSet) IntVar(p *int, name string, value int, usage string) {
+func (a *ncFlagSet) IntVar(p *int, name string, value int, usage string) {
 	a.fs.IntVar(p, name, value, usage)
 }
 
-func (a *ocrFlagSet) DurationVar(p *time.Duration, name string, value time.Duration, usage string) {
+func (a *ncFlagSet) DurationVar(p *time.Duration, name string, value time.Duration, usage string) {
 	a.fs.DurationVar(p, name, value, usage)
 }
 
-func (a *ocrFlagSet) PrintDefaults() {
+func (a *ncFlagSet) PrintDefaults() {
 	a.fs.PrintDefaults()
 }
 
-func (a *ocrFlagSet) Parse(arguments []string) error {
+func (a *ncFlagSet) Parse(arguments []string) error {
 	expanded := expandShortFlags(arguments, a.shortMap)
 
 	for _, arg := range expanded {
@@ -110,11 +110,12 @@ type reviewOptions struct {
 	maxTools       int
 	maxGitProcs    int
 	preview        bool
+	reportPath     string
 	showHelp       bool
 }
 
 func parseReviewFlags(args []string) (reviewOptions, error) {
-	a := newOcrFlagSet("ocr review")
+	a := newNcFlagSet("nc review")
 
 	opts := reviewOptions{}
 
@@ -124,7 +125,7 @@ func parseReviewFlags(args []string) (reviewOptions, error) {
 	a.StringVar(&opts.from, "from", "", "source ref to start diff from (e.g., 'main')")
 	a.StringVar(&opts.to, "to", "", "target ref to end diff at (e.g., 'feature-branch')")
 	a.StringVarP(&opts.commit, "commit", "c", "", "single commit hash or tag to review (vs its parent)")
-	a.StringVarP(&opts.outputFormat, "format", "f", "text", "output format: text or json")
+	a.StringVarP(&opts.outputFormat, "format", "f", "text", "output format: text, json or markdown")
 	a.IntVar(&opts.concurrency, "concurrency", 8, "max concurrent file reviews")
 	a.IntVar(&opts.perFileTimeout, "timeout", 10, "concurrent task timeout in minutes")
 	a.StringVar(&opts.audience, "audience", "human", "output audience: human (show progress) or agent (summary only)")
@@ -133,6 +134,7 @@ func parseReviewFlags(args []string) (reviewOptions, error) {
 	a.IntVar(&opts.maxTools, "max-tools", 0, "max tool call rounds per file (0 = template default; min 10)")
 	a.IntVar(&opts.maxGitProcs, "max-git-procs", 16, "max concurrent git subprocesses")
 	a.BoolVarP(&opts.preview, "preview", "p", false, "preview which files will be reviewed without running the LLM")
+	a.StringVar(&opts.reportPath, "report", "", "generate HTML report at this path (e.g., report.html)")
 
 	if err := a.Parse(args); err != nil {
 		return opts, fmt.Errorf("parse flags: %w", err)
@@ -172,7 +174,7 @@ func parseReviewFlags(args []string) (reviewOptions, error) {
 		return opts, fmt.Errorf("--max-tools must be a non-negative integer (0 means use template default)")
 	}
 	if opts.maxTools > 0 && opts.maxTools < minMaxTools {
-		fmt.Fprintf(os.Stderr, "[ocr] --max-tools %d is below minimum %d, using %d\n", opts.maxTools, minMaxTools, minMaxTools)
+		fmt.Fprintf(os.Stderr, "[NC] --max-tools %d is below minimum %d, using %d\n", opts.maxTools, minMaxTools, minMaxTools)
 		opts.maxTools = minMaxTools
 	}
 
@@ -184,45 +186,52 @@ func parseReviewFlags(args []string) (reviewOptions, error) {
 }
 
 func printReviewUsage() {
-	fmt.Println(`OpenCodeReview - AI-Powered Code Review CLI
+	fmt.Println(`NoiseCheck - AI-Powered Code Review CLI
 
 Usage:
-  ocr review [flags]
-  ocr r [flags]                (alias)
+  nc review [flags]
+  nc r [flags]                (alias)
 
 Examples:
   # Review staged + unstaged + untracked changes in current workspace
-  ocr review
+  nc review
 
   # Review a branch against its base (merge-base mode)
-  ocr review --from master --to dev-ref
+  nc review --from master --to dev-ref
 
   # Review a specific commit
-  ocr review --commit abc123
-  ocr review -c abc123
+  nc review --commit abc123
+  nc review -c abc123
 
   # Output JSON format
-  ocr review --format json
-  ocr review -f json
+  nc review --format json
+  nc review -f json
+
+  # Output Markdown format (CI-friendly)
+  nc review --format markdown
+
+  # Generate HTML report
+  nc review --report report.html
 
   # Agent mode (summary only, no progress lines)
-  ocr review --audience agent
+  nc review --audience agent
 
   # Preview which files will be reviewed
-  ocr review --preview
-  ocr review -c abc123 -p
+  nc review --preview
+  nc review -c abc123 -p
 
 Flags:
   --audience string       output audience: human (show progress) or agent (summary only) (default "human")
   -b, --background string optional requirement/business context for the review
   -c, --commit string     single commit hash or tag to review (vs its parent)
-  -f, --format string     output format: text or json (default "text")
+  -f, --format string     output format: text, json or markdown (default "text")
   --concurrency int       max concurrent file reviews (default 8)
   --max-git-procs int     max concurrent git subprocesses (default 16)
   --from string           source ref to start diff from (e.g., 'main')
   --max-tools int         max tool call rounds per file (0 = template default; min 10)
   --model string          override LLM model for this review (e.g., claude-opus-4-6)
   -p, --preview           preview which files will be reviewed without running the LLM
+  --report string         generate HTML report at this path (e.g., report.html)
   --repo string           root directory of the git repository (default: current dir)
   --rule string           path to JSON file with system review rules
   --timeout int           concurrent task timeout in minutes (default 10)
@@ -247,7 +256,7 @@ func parseConfigArgs(args []string) (configAction, error) {
 	switch subCmd {
 	case "set":
 		if len(args) < 3 {
-			return configAction{}, fmt.Errorf("usage: ocr config set <key> <value>\ne.g., ocr config set llm.model claude-opus-4-6")
+			return configAction{}, fmt.Errorf("usage: nc config set <key> <value>\ne.g., nc config set llm.model claude-opus-4-6")
 		}
 		return configAction{
 			subCmd: "set",
@@ -263,38 +272,38 @@ func printConfigUsage() {
 	fmt.Println(`Configuration management.
 
 Usage:
-  ocr config set <key> <value>
-  ocr config provider              Interactive provider setup
-  ocr config model                 Interactive model selection
+  nc config set <key> <value>
+  nc config provider              Interactive provider setup
+  nc config model                 Interactive model selection
 
 Examples:
   # Provider setup (interactive)
-  ocr config provider
-  ocr config model
+  nc config provider
+  nc config model
 
   # Provider setup (non-interactive)
-  ocr config set provider anthropic
-  ocr config set model claude-opus-4-6
+  nc config set provider anthropic
+  nc config set model claude-opus-4-6
   # Set API key via environment variable (recommended) or config:
   # export ANTHROPIC_API_KEY=sk-ant-xxx
-  ocr config set providers.anthropic.api_key "$ANTHROPIC_API_KEY"
+  nc config set providers.anthropic.api_key "$ANTHROPIC_API_KEY"
 
   # Custom provider
-  ocr config set provider my-gateway
-  ocr config set custom_providers.my-gateway.url https://gateway.internal.com/v1
-  ocr config set custom_providers.my-gateway.protocol openai
-  ocr config set custom_providers.my-gateway.model llama-3-70b
-  ocr config set custom_providers.my-gateway.models '["llama-3-70b","llama-3-8b"]'
-  ocr config set custom_providers.my-gateway.api_key "$MY_API_KEY"
+  nc config set provider my-gateway
+  nc config set custom_providers.my-gateway.url https://gateway.internal.com/v1
+  nc config set custom_providers.my-gateway.protocol openai
+  nc config set custom_providers.my-gateway.model llama-3-70b
+  nc config set custom_providers.my-gateway.models '["llama-3-70b","llama-3-8b"]'
+  nc config set custom_providers.my-gateway.api_key "$MY_API_KEY"
 
   # Legacy endpoint configuration
-  ocr config set llm.url https://xx/v1/openai/chat/completions
-  ocr config set llm.auth_token xxxxxxxxxx
-  ocr config set llm.auth_header x-api-key
-  ocr config set llm.model claude-opus-4-6
-  ocr config set llm.extra_body '{"thinking":{"type":"disabled"}}'
-  ocr config set language English
-  ocr config set telemetry.enabled true
+  nc config set llm.url https://xx/v1/openai/chat/completions
+  nc config set llm.auth_token xxxxxxxxxx
+  nc config set llm.auth_header x-api-key
+  nc config set llm.model claude-opus-4-6
+  nc config set llm.extra_body '{"thinking":{"type":"disabled"}}'
+  nc config set language English
+  nc config set telemetry.enabled true
 
 Supported keys: provider, model, providers.<name>.<field>, custom_providers.<name>.<field>, llm.url, llm.auth_token, llm.auth_header, llm.model, llm.use_anthropic, llm.extra_body, language, telemetry.enabled, telemetry.exporter, telemetry.otlp_endpoint, telemetry.content_logging
 Provider fields: api_key, url, protocol, model, models, auth_header, extra_body`)

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	allowedext "github.com/open-code-review/open-code-review/internal/config/allowlist"
-	"github.com/open-code-review/open-code-review/internal/model"
+	allowedext "noisecheck/internal/config/allowlist"
+	"noisecheck/internal/model"
 )
 
 // ExcludeReason describes why a file was excluded from review.

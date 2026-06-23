@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/open-code-review/open-code-review/internal/diff"
-	"github.com/open-code-review/open-code-review/internal/model"
+	"noisecheck/internal/diff"
+	"noisecheck/internal/model"
 )
 
 func main() {

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/open-code-review/open-code-review/internal/gitcmd"
-	"github.com/open-code-review/open-code-review/internal/model"
+	"noisecheck/internal/gitcmd"
+	"noisecheck/internal/model"
 )
 
 // DiffContextLines defines the number of context lines around each changed hunk.

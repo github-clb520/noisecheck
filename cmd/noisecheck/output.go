@@ -8,14 +8,14 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/open-code-review/open-code-review/internal/agent"
-	"github.com/open-code-review/open-code-review/internal/model"
-	"github.com/open-code-review/open-code-review/internal/suggestdiff"
+	"noisecheck/internal/agent"
+	"noisecheck/internal/model"
+	"noisecheck/internal/suggestdiff"
 )
 
 func outputText(comments []model.LlmComment) {
 	if len(comments) == 0 {
-		fmt.Println("No comments generated. Looks good to me.")
+		fmt.Println("✅ 审查完毕，未发现问题。")
 		return
 	}
 	for _, c := range comments {
@@ -35,9 +35,9 @@ func hasSubtaskErrors(warnings []agent.AgentWarning) bool {
 func outputTextWithWarnings(comments []model.LlmComment, warnings []agent.AgentWarning) {
 	if len(comments) == 0 {
 		if hasSubtaskErrors(warnings) {
-			fmt.Println("Some files could not be reviewed due to errors (see warnings below).")
+			fmt.Println("⚠️  部分文件审查出错（详见下方警告）")
 		} else {
-			fmt.Println("No comments generated. Looks good to me.")
+			fmt.Println("✅ 审查完毕，未发现问题。")
 		}
 	} else {
 		for _, c := range comments {
@@ -48,18 +48,36 @@ func outputTextWithWarnings(comments []model.LlmComment, warnings []agent.AgentW
 		if w.Type == "subtask_error" {
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "[ocr] WARNING [%s] %s: %s\n", w.Type, sanitizeTerminal(w.File), sanitizeTerminal(w.Message))
+		fmt.Fprintf(os.Stderr, "[NC] WARNING [%s] %s: %s\n", w.Type, sanitizeTerminal(w.File), sanitizeTerminal(w.Message))
 	}
 }
 
+// renderComment 渲染单条审查意见，含中文严重级别标签
 func renderComment(comment model.LlmComment) {
 	lines := buildDiffLines(comment)
 	if len(lines) == 0 && comment.Content == "" {
 		return
 	}
 
-	fmt.Printf("\n\033[2m─── %s:%d-%d ───\033[0m\n", sanitizeTerminal(comment.Path), comment.StartLine, comment.EndLine)
+	// 自动推断或使用已有严重级别
+	sev := comment.Severity
+	if sev == "" {
+		sev = model.KeywordSeverity(comment.Content)
+	}
+	sevLabel, sevColor := model.SeverityChinese(sev)
 
+	// 严重级别标签 + 文件位置
+	fmt.Printf("\n%s[%s]%s \033[2m%s:%d-%d\033[0m\n",
+		sevColor, sevLabel, model.ResetColor,
+		sanitizeTerminal(comment.Path), comment.StartLine, comment.EndLine)
+
+	// 分类标签（如果有）
+	if comment.Category != "" {
+		catLabel := categoryChinese(comment.Category)
+		fmt.Printf("  \033[2m分类: %s\033[0m\n", catLabel)
+	}
+
+	// 评论内容
 	if comment.Content != "" {
 		for _, ln := range wrapByRunes(sanitizeTerminal(comment.Content), 100) {
 			fmt.Printf("%s\n", ln)
@@ -67,6 +85,7 @@ func renderComment(comment model.LlmComment) {
 		fmt.Println()
 	}
 
+	// 建议代码 diff
 	if len(lines) > 0 {
 		for _, dl := range lines {
 			switch dl.Type {
@@ -81,6 +100,22 @@ func renderComment(comment model.LlmComment) {
 	}
 
 	fmt.Println()
+}
+
+// categoryChinese 返回分类中文名
+func categoryChinese(cat string) string {
+	switch strings.ToLower(cat) {
+	case "security":
+		return "安全"
+	case "performance":
+		return "性能"
+	case "correctness":
+		return "正确性"
+	case "maintainability":
+		return "可维护性"
+	default:
+		return cat
+	}
 }
 
 // printDiffLine renders a single diff line with colored prefix and background on content.
@@ -101,7 +136,7 @@ func wrapByRunes(text string, maxW int) []string {
 	return result
 }
 
-// wrapSingleRuneLine breaks one paragraph (no newlines) into rune-width-constrained lines.
+// wrapSingleRuneLine breaks one paragraph into rune-width-constrained lines.
 func wrapSingleRuneLine(line string, maxW int) []string {
 	runes := []rune(line)
 	if visibleRunesLen(runes) <= maxW {
@@ -112,7 +147,6 @@ func wrapSingleRuneLine(line string, maxW int) []string {
 		cut := runeWrapCut(runes, maxW)
 		result = append(result, string(runes[:cut]))
 		runes = runes[cut:]
-		// trim leading spaces of next segment
 		for len(runes) > 0 && runes[0] == ' ' {
 			runes = runes[1:]
 		}
@@ -174,6 +208,8 @@ func buildDiffLines(comment model.LlmComment) []suggestdiff.DiffLine {
 	newLines := splitToLines(comment.SuggestionCode)
 	return suggestdiff.ComputeLineDiff(oldLines, newLines)
 }
+
+// --- JSON output (unchanged) ---
 
 type jsonSummary struct {
 	FilesReviewed    int64  `json:"files_reviewed"`
@@ -253,6 +289,67 @@ func outputJSONNoFiles() error {
 	enc.SetIndent("", "  ")
 	return enc.Encode(out)
 }
+
+// --- Markdown output (适用于 CI 日志) ---
+
+func outputMarkdown(comments []model.LlmComment) {
+	if len(comments) == 0 {
+		fmt.Println("✅ No issues found.")
+		return
+	}
+	fmt.Printf("## NoiseCheck 审查报告\n\n")
+	fmt.Printf("共发现 **%d** 个问题\n\n", len(comments))
+
+	// 按文件分组
+	byFile := make(map[string][]model.LlmComment)
+	for _, c := range comments {
+		path := c.Path
+		if path == "" {
+			path = "(unknown)"
+		}
+		byFile[path] = append(byFile[path], c)
+	}
+
+	for path, pathComments := range byFile {
+		fmt.Printf("### %s\n\n", path)
+		for i, c := range pathComments {
+			sev := c.Severity
+			if sev == "" {
+				sev = model.KeywordSeverity(c.Content)
+			}
+			sevLabel, _ := model.SeverityChinese(sev)
+			lines := ""
+			if c.StartLine > 0 {
+				lines = fmt.Sprintf(" L%d-%d", c.StartLine, c.EndLine)
+			}
+			fmt.Printf("%d. **`[%s]`** `%s%s`\n", i+1, sevLabel, path, lines)
+			fmt.Printf("   %s\n", c.Content)
+			if c.SuggestionCode != "" {
+				fmt.Printf("   ```suggestion\n   %s\n   ```\n", c.SuggestionCode)
+			}
+			fmt.Println()
+		}
+	}
+}
+
+func outputMarkdownWithWarnings(comments []model.LlmComment, warnings []agent.AgentWarning,
+	filesReviewed, inputTokens, outputTokens, totalTokens, cacheReadTokens, cacheWriteTokens int64, duration time.Duration) {
+	outputMarkdown(comments)
+	if len(warnings) > 0 {
+		fmt.Printf("### 警告\n\n")
+		for _, w := range warnings {
+			if w.Type == "subtask_error" {
+				continue
+			}
+			fmt.Printf("- `[%s]` %s: %s\n", w.Type, w.File, w.Message)
+		}
+		fmt.Println()
+	}
+	fmt.Printf("---\n*审查文件数: %d | 总计消耗: ~%d tokens | 耗时: %s*\n",
+		filesReviewed, totalTokens, duration.Round(time.Second))
+}
+
+// --- Preview output ---
 
 func outputPreviewText(p *agent.DiffPreview) {
 	if p.TotalFiles == 0 {

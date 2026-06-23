@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/open-code-review/open-code-review/internal/llm"
-	"github.com/open-code-review/open-code-review/internal/session"
-	"github.com/open-code-review/open-code-review/internal/stdout"
-	"github.com/open-code-review/open-code-review/internal/tool"
+	"noisecheck/internal/llm"
+	"noisecheck/internal/session"
+	"noisecheck/internal/stdout"
+	"noisecheck/internal/tool"
 )
 
 // compression thresholds as fractions of MaxTokens.
@@ -204,7 +204,7 @@ func (a *Agent) runCompression(ctx context.Context, msgs []llm.Message, filePath
 	rec := fs.AppendTaskRecord(session.MemoryCompressionTask, compressionMsgs)
 	if err != nil {
 		rec.SetError(err, duration)
-		fmt.Fprintf(stdout.Writer(), "[ocr] Memory compression failed: %v\n", err)
+		fmt.Fprintf(stdout.Writer(), "[NC] Memory compression failed: %v\n", err)
 		// Intentionally return unmodified msgs: truncating to frozenEnd would
 		// discard all conversation context, which is worse than staying over
 		// the token limit temporarily.

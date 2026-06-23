@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/open-code-review/open-code-review/internal/gitcmd"
-	"github.com/open-code-review/open-code-review/internal/pathutil"
+	"noisecheck/internal/gitcmd"
+	"noisecheck/internal/pathutil"
 )
 
 // ReviewMode represents the active review mode.

@@ -8,16 +8,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/open-code-review/open-code-review/internal/llm"
+	"noisecheck/internal/llm"
 )
 
-// Default config file location: ~/.opencodereview/config.json
+// Default config file location: ~/.noisecheck/config.json
 func defaultConfigPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
-	return filepath.Join(home, ".opencodereview", "config.json"), nil
+	return filepath.Join(home, ".noisecheck", "config.json"), nil
 }
 
 func runConfig(args []string) error {
@@ -29,12 +29,12 @@ func runConfig(args []string) error {
 	switch args[0] {
 	case "provider":
 		if len(args) != 1 {
-			return fmt.Errorf("config provider does not accept arguments; use 'ocr config set provider <name>' for non-interactive setup")
+			return fmt.Errorf("config provider does not accept arguments; use 'nc config set provider <name>' for non-interactive setup")
 		}
 		return runConfigProvider()
 	case "model":
 		if len(args) != 1 {
-			return fmt.Errorf("config model does not accept arguments; use 'ocr config set model <name>' for non-interactive setup")
+			return fmt.Errorf("config model does not accept arguments; use 'nc config set model <name>' for non-interactive setup")
 		}
 		return runConfigModel()
 	}
@@ -91,7 +91,7 @@ type ProviderEntry struct {
 	ExtraBody  map[string]any `json:"extra_body,omitempty"`
 }
 
-// Config represents the user-level configuration file (~/.opencodereview/config.json).
+// Config represents the user-level configuration file (~/.noisecheck/config.json).
 type Config struct {
 	Provider        string                   `json:"provider,omitempty"`
 	Model           string                   `json:"model,omitempty"`

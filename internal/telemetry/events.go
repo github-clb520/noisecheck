@@ -13,7 +13,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/open-code-review/open-code-review/internal/stdout"
+	"noisecheck/internal/stdout"
 )
 
 // Event emits a structured event as a span with immediate end.
@@ -69,40 +69,40 @@ func FormatDuration(dur time.Duration) string {
 func PrintTraceSummary(filesReviewed, commentsGenerated int64, inputTokens, outputTokens, totalTokens int64, cacheReadTokens, cacheWriteTokens int64, duration time.Duration) {
 	elapsed := duration.Round(time.Second).String()
 	if inputTokens > 0 || outputTokens > 0 {
-		base := fmt.Sprintf("[ocr] Summary: %d file(s) reviewed, %d comment(s), ~%d token(s) used (input: ~%d, output: ~%d)",
+		base := fmt.Sprintf("[NC] Summary: %d file(s) reviewed, %d comment(s), ~%d token(s) used (input: ~%d, output: ~%d)",
 			filesReviewed, commentsGenerated, totalTokens, inputTokens, outputTokens)
 		if cacheReadTokens > 0 || cacheWriteTokens > 0 {
 			base += fmt.Sprintf(", cache(read: ~%d, write: ~%d)", cacheReadTokens, cacheWriteTokens)
 		}
 		fmt.Fprintf(stdout.Writer(), "%s, %s elapsed\n", base, elapsed)
 	} else {
-		fmt.Fprintf(stdout.Writer(), "[ocr] Summary: %d file(s) reviewed, %d comment(s), ~%d token(s) used, %s elapsed\n",
+		fmt.Fprintf(stdout.Writer(), "[NC] Summary: %d file(s) reviewed, %d comment(s), ~%d token(s) used, %s elapsed\n",
 			filesReviewed, commentsGenerated, totalTokens, elapsed)
 	}
 }
 
 // PrintToolCallStarted prints a line when a tool begins execution.
 // Args are summarized as key-value pairs (path, search terms, etc.).
-// Example: [ocr]   ▶ file_read "internal/config/rules/loader.go"
+// Example: [NC]   ▶ file_read "internal/config/rules/loader.go"
 func PrintToolCallStarted(toolName string, args map[string]any) {
 	summary := summarizeArgs(args)
 	if summary != "" {
-		fmt.Fprintf(stdout.Writer(), "[ocr]   ▶ %s %s\n", toolName, summary)
+		fmt.Fprintf(stdout.Writer(), "[NC]   ▶ %s %s\n", toolName, summary)
 	} else {
-		fmt.Fprintf(stdout.Writer(), "[ocr]   ▶ %s\n", toolName)
+		fmt.Fprintf(stdout.Writer(), "[NC]   ▶ %s\n", toolName)
 	}
 }
 
 // PrintToolCallFinished prints a line when a tool finishes successfully.
-// Example: [ocr]   ✔ file_read "internal/config/rules/loader.go" (12ms)
+// Example: [NC]   ✔ file_read "internal/config/rules/loader.go" (12ms)
 func PrintToolCallFinished(toolName string, dur time.Duration) {
-	fmt.Fprintf(stdout.Writer(), "[ocr]   ✔ %s (%s)\n", toolName, FormatDuration(dur))
+	fmt.Fprintf(stdout.Writer(), "[NC]   ✔ %s (%s)\n", toolName, FormatDuration(dur))
 }
 
 // PrintToolCallError prints a line when a tool fails.
-// Example: [ocr]   ✘ file_read "internal/config/rules/loader.go" failed: permission denied
+// Example: [NC]   ✘ file_read "internal/config/rules/loader.go" failed: permission denied
 func PrintToolCallError(toolName string, err error) {
-	fmt.Fprintf(os.Stderr, "[ocr]   ✘ %s failed: %v\n", toolName, err)
+	fmt.Fprintf(os.Stderr, "[NC]   ✘ %s failed: %v\n", toolName, err)
 }
 
 // summarizeArgs extracts a concise key=value summary from tool arguments for console display.

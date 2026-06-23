@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/open-code-review/open-code-review/internal/model"
+	"noisecheck/internal/model"
 )
 
 // CodeCommentProvider submits review comments to the per-Agent CommentCollector.

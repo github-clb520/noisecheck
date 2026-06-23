@@ -8,16 +8,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/open-code-review/open-code-review/internal/agent"
-	"github.com/open-code-review/open-code-review/internal/config/rules"
-	"github.com/open-code-review/open-code-review/internal/config/template"
-	"github.com/open-code-review/open-code-review/internal/config/toolsconfig"
-	"github.com/open-code-review/open-code-review/internal/diff"
-	"github.com/open-code-review/open-code-review/internal/gitcmd"
-	"github.com/open-code-review/open-code-review/internal/llm"
-	"github.com/open-code-review/open-code-review/internal/stdout"
-	"github.com/open-code-review/open-code-review/internal/telemetry"
-	"github.com/open-code-review/open-code-review/internal/tool"
+	"noisecheck/internal/agent"
+	"noisecheck/internal/config/rules"
+	"noisecheck/internal/config/template"
+	"noisecheck/internal/config/toolsconfig"
+	"noisecheck/internal/diff"
+	"noisecheck/internal/gitcmd"
+	"noisecheck/internal/llm"
+	"noisecheck/internal/report"
+	"noisecheck/internal/stdout"
+	"noisecheck/internal/telemetry"
+	"noisecheck/internal/tool"
 )
 
 func runReview(args []string) error {
@@ -134,7 +135,7 @@ func runReview(args []string) error {
 
 	// Silence progress output during execution; restore before Summary in agent mode.
 	var unsilence func()
-	if opts.outputFormat == "json" || opts.audience == "agent" {
+	if opts.outputFormat == "json" || opts.outputFormat == "markdown" || opts.audience == "agent" {
 		unsilence = stdout.Quiet()
 		defer func() {
 			if unsilence != nil {
@@ -167,6 +168,10 @@ func runReview(args []string) error {
 	if opts.outputFormat == "json" && len(comments) == 0 && ag.FilesReviewed() == 0 {
 		return outputJSONNoFiles()
 	}
+	if opts.outputFormat == "markdown" && len(comments) == 0 && ag.FilesReviewed() == 0 {
+		outputMarkdown(nil)
+		return nil
+	}
 
 	// In agent mode (text output), restore stdout so Summary reaches the terminal.
 	if opts.audience == "agent" && opts.outputFormat != "json" && unsilence != nil {
@@ -174,18 +179,31 @@ func runReview(args []string) error {
 		unsilence = nil
 	}
 
-	if opts.outputFormat != "json" {
+	if opts.outputFormat != "json" && opts.outputFormat != "markdown" {
 		telemetry.PrintTraceSummary(ag.FilesReviewed(), int64(len(comments)), ag.TotalInputTokens(), ag.TotalOutputTokens(), ag.TotalTokensUsed(), ag.TotalCacheReadTokens(), ag.TotalCacheWriteTokens(), duration)
 	}
 
 	if opts.outputFormat == "json" {
 		return outputJSONWithWarnings(comments, ag.Warnings(), ag.FilesReviewed(), ag.TotalInputTokens(), ag.TotalOutputTokens(), ag.TotalTokensUsed(), ag.TotalCacheReadTokens(), ag.TotalCacheWriteTokens(), duration)
 	}
+	if opts.outputFormat == "markdown" {
+		outputMarkdownWithWarnings(comments, ag.Warnings(), ag.FilesReviewed(), ag.TotalInputTokens(), ag.TotalOutputTokens(), ag.TotalTokensUsed(), ag.TotalCacheReadTokens(), ag.TotalCacheWriteTokens(), duration)
+		return nil
+	}
 	if opts.audience == "agent" {
 		outputTextWithWarnings(comments, ag.Warnings())
 		return nil
 	}
 	outputTextWithWarnings(comments, ag.Warnings())
+
+	// Generate HTML report if requested
+	if opts.reportPath != "" {
+		if err := report.Generate(opts.reportPath, comments, int(ag.FilesReviewed()), ag.TotalTokensUsed(), duration); err != nil {
+			fmt.Fprintf(os.Stderr, "[NC] WARNING: failed to generate report: %v\n", err)
+		} else {
+			fmt.Fprintf(os.Stderr, "[NC] Report saved to %s\n", opts.reportPath)
+		}
+	}
 
 	return nil
 }

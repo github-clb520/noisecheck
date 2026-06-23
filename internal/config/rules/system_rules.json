@@ -17,6 +17,18 @@
     "**/*.{kt}": "kotlin.md",
     "**/*.rs": "rust.md",
     "**/*.{cpp,cc,hpp}": "cpp.md",
-    "**/*.c": "c.md"
+    "**/*.c": "c.md",
+    "**/Dockerfile*": "security.md",
+    "**/docker-compose*.{yaml,yml}": "security.md",
+    "**/*.tf": "security.md",
+    "**/*.tfvars": "security.md",
+    "**/kubernetes*.{yaml,yml}": "security.md",
+    "**/.env*": "secrets.md",
+    "**/*.pem": "secrets.md",
+    "**/*.key": "secrets.md",
+    "**/secrets*": "secrets.md",
+    "**/credentials*": "secrets.md",
+    "**/.aws/**": "secrets.md",
+    "**/service-account*.{json,yaml}": "secrets.md"
   }
 }

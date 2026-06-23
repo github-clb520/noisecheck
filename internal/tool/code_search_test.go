@@ -29,14 +29,24 @@ func TestBuildGrepArgs_CommitMode(t *testing.T) {
 	p := NewCodeSearch(&FileReader{RepoDir: "/tmp", Ref: "abc1234"})
 	args := p.buildGrepArgs("myFunc", false, false, []string{"pkg/"})
 
-	assertContainsInOrder(t, args, "-e", "myFunc", "--end-of-options", "abc1234", "--", "pkg/")
+	if gitSupportsEndOfOptions() {
+		assertContainsInOrder(t, args, "-e", "myFunc", "--end-of-options", "abc1234", "--", "pkg/")
+	} else {
+		assertContainsInOrder(t, args, "-e", "myFunc", "abc1234", "--", "pkg/")
+		assertNotContains(t, args, "--end-of-options")
+	}
 }
 
 func TestBuildGrepArgs_RefUsesEndOfOptions(t *testing.T) {
 	p := NewCodeSearch(&FileReader{RepoDir: "/tmp", Ref: "-O./pwn.sh"})
 	args := p.buildGrepArgs("myFunc", false, false, nil)
 
-	assertContainsInOrder(t, args, "-e", "myFunc", "--end-of-options", "-O./pwn.sh", "--")
+	if gitSupportsEndOfOptions() {
+		assertContainsInOrder(t, args, "-e", "myFunc", "--end-of-options", "-O./pwn.sh", "--")
+	} else {
+		assertContainsInOrder(t, args, "-e", "myFunc", "-O./pwn.sh", "--")
+		assertNotContains(t, args, "--end-of-options")
+	}
 }
 
 func TestBuildGrepArgs_PatternStartingWithDash(t *testing.T) {
@@ -195,6 +205,10 @@ func TestGitGrep_CommitMode_WithPathspec(t *testing.T) {
 }
 
 func TestGitGrep_OptionLikeRefDoesNotLaunchPager(t *testing.T) {
+	if !gitSupportsEndOfOptions() {
+		t.Skip("git does not support --end-of-options (requires >= 2.44), skipping option-like ref test")
+	}
+
 	dir := setupTestRepo(t)
 	proofPath := filepath.Join(dir, "PROOF")
 	pagerPath := filepath.Join(dir, "pwn.sh")
@@ -279,6 +293,8 @@ func TestGitGrep_PerlRegexp_InvalidPattern_ReturnsError(t *testing.T) {
 		t.Errorf("expected error message for invalid perl regexp, got: %s", result)
 	}
 }
+
+// --- assertion helpers ---
 
 func assertContains(t *testing.T, args []string, val string) {
 	t.Helper()

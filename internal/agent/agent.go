@@ -9,17 +9,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/open-code-review/open-code-review/internal/config/rules"
-	"github.com/open-code-review/open-code-review/internal/config/template"
-	"github.com/open-code-review/open-code-review/internal/config/toolsconfig"
-	"github.com/open-code-review/open-code-review/internal/diff"
-	"github.com/open-code-review/open-code-review/internal/gitcmd"
-	"github.com/open-code-review/open-code-review/internal/llm"
-	"github.com/open-code-review/open-code-review/internal/model"
-	"github.com/open-code-review/open-code-review/internal/session"
-	"github.com/open-code-review/open-code-review/internal/stdout"
-	"github.com/open-code-review/open-code-review/internal/telemetry"
-	"github.com/open-code-review/open-code-review/internal/tool"
+	"noisecheck/internal/config/rules"
+	"noisecheck/internal/config/template"
+	"noisecheck/internal/config/toolsconfig"
+	"noisecheck/internal/diff"
+	"noisecheck/internal/gitcmd"
+	"noisecheck/internal/llm"
+	"noisecheck/internal/model"
+	"noisecheck/internal/session"
+	"noisecheck/internal/stdout"
+	"noisecheck/internal/telemetry"
+	"noisecheck/internal/tool"
 )
 
 // Args holds all dependencies and configuration needed to run a review session.
@@ -161,7 +161,7 @@ func (p *CommentWorkerPool) Submit(f func() ([]model.LlmComment, error)) {
 
 		comments, err := f()
 		if err != nil {
-			fmt.Fprintf(stdout.Writer(), "[ocr] CommentWorkerPool error: %v\n", err)
+			fmt.Fprintf(stdout.Writer(), "[NC] CommentWorkerPool error: %v\n", err)
 		}
 		p.resultsMu.Lock()
 		p.results = append(p.results, comments...)
@@ -222,12 +222,12 @@ func (a *Agent) Run(ctx context.Context) ([]model.LlmComment, error) {
 
 	totalChanged := len(a.diffs)
 	reviewCount := a.countReviewable(a.diffs)
-	fmt.Fprintf(stdout.Writer(), "[ocr] %d file(s) changed, reviewing %d in %s\n", totalChanged, reviewCount, a.args.RepoDir)
+	fmt.Fprintf(stdout.Writer(), "[NC] %d file(s) changed, reviewing %d in %s\n", totalChanged, reviewCount, a.args.RepoDir)
 
 	a.diffs = a.filterDiffs(a.diffs)
 
 	if len(a.diffs) == 0 {
-		fmt.Fprintln(stdout.Writer(), "[ocr] No supported files changed. Skipping review.")
+		fmt.Fprintln(stdout.Writer(), "[NC] No supported files changed. Skipping review.")
 		telemetry.Event(ctx, "no.files.changed")
 		a.session.Finalize()
 		return []model.LlmComment{}, nil
@@ -417,7 +417,7 @@ func (a *Agent) dispatchSubtasks(ctx context.Context) ([]model.LlmComment, error
 
 			if err := a.executeSubtask(fileCtx, d); err != nil {
 				atomic.AddInt64(&a.subtaskFailed, 1)
-				fmt.Fprintf(stdout.Writer(), "[ocr] Subtask error for %s: %v\n", d.NewPath, err)
+				fmt.Fprintf(stdout.Writer(), "[NC] Subtask error for %s: %v\n", d.NewPath, err)
 				telemetry.ErrorEvent(fileCtx, "subtask.error", err,
 					telemetry.AnyToAttr("file.path", d.NewPath))
 				a.recordWarning("subtask_error", d.NewPath, err.Error())
@@ -470,7 +470,7 @@ func (a *Agent) executeSubtask(ctx context.Context, d model.Diff) error {
 	// Phase 1: Plan (skip when changes are below threshold)
 	var planResult string
 	if a.args.Template.PlanTask != nil && len(a.args.Template.PlanTask.Messages) > 0 && threshold > 0 && changeLines < int64(threshold) {
-		fmt.Fprintf(stdout.Writer(), "[ocr] Skipping plan phase for %s (%d lines < threshold %d)\n", newPath, changeLines, threshold)
+		fmt.Fprintf(stdout.Writer(), "[NC] Skipping plan phase for %s (%d lines < threshold %d)\n", newPath, changeLines, threshold)
 		telemetry.Event(ctx, "plan.skipped",
 			telemetry.AnyToAttr("file.path", newPath),
 			telemetry.AnyToAttr("lines.changed", changeLines),
@@ -479,7 +479,7 @@ func (a *Agent) executeSubtask(ctx context.Context, d model.Diff) error {
 		var err error
 		planResult, err = a.executePlanPhase(ctx, newPath, d.Diff, changeFilesExcludingCurrent, rule)
 		if err != nil {
-			fmt.Fprintf(stdout.Writer(), "[ocr] Plan phase failed for %s: %v (continuing without plan)\n", newPath, err)
+			fmt.Fprintf(stdout.Writer(), "[NC] Plan phase failed for %s: %v (continuing without plan)\n", newPath, err)
 			telemetry.Eventf(ctx, "plan.failed", err.Error(),
 				telemetry.AnyToAttr("file.path", newPath))
 			planResult = ""
@@ -520,7 +520,7 @@ func (a *Agent) executeSubtask(ctx context.Context, d model.Diff) error {
 	tokenLimit := maxAllowed * 4 / 5 // 80% of MaxTokens
 	if tokenCount > tokenLimit {
 		msg := fmt.Sprintf("prompt tokens (%d) exceed %d%% of max_tokens(%d)", tokenCount, 80, maxAllowed)
-		fmt.Fprintf(stdout.Writer(), "[ocr] WARNING: %s for %s\n", msg, newPath)
+		fmt.Fprintf(stdout.Writer(), "[NC] WARNING: %s for %s\n", msg, newPath)
 		a.recordWarning("token_threshold_exceeded", newPath, msg)
 		telemetry.Event(ctx, "token.threshold.exceeded",
 			telemetry.AnyToAttr("file.path", newPath),
@@ -580,7 +580,7 @@ func (a *Agent) executeReviewFilter(ctx context.Context, d model.Diff, newPath s
 	})
 	if err != nil {
 		rec.SetError(err, time.Since(startTime))
-		fmt.Fprintf(stdout.Writer(), "[ocr] Review filter failed for %s: %v\n", newPath, err)
+		fmt.Fprintf(stdout.Writer(), "[NC] Review filter failed for %s: %v\n", newPath, err)
 		return
 	}
 	rec.SetResponse(resp, time.Since(startTime))
@@ -597,7 +597,7 @@ func (a *Agent) executeReviewFilter(ctx context.Context, d model.Diff, newPath s
 	}
 
 	a.args.CommentCollector.RemoveByPathAndIndices(newPath, indices)
-	fmt.Fprintf(stdout.Writer(), "[ocr] Review filter removed %d comment(s) for %s\n", len(indices), newPath)
+	fmt.Fprintf(stdout.Writer(), "[NC] Review filter removed %d comment(s) for %s\n", len(indices), newPath)
 }
 
 // buildFilterCommentsJSON serializes comments into a JSON array with generated IDs.
@@ -629,7 +629,7 @@ func parseFilterResponse(raw string, total int) map[int]struct{} {
 		if len(preview) > 200 {
 			preview = preview[:200] + "..."
 		}
-		fmt.Fprintf(stdout.Writer(), "[ocr] Review filter: failed to parse LLM response: %v, raw: %s\n", err, preview)
+		fmt.Fprintf(stdout.Writer(), "[NC] Review filter: failed to parse LLM response: %v, raw: %s\n", err, preview)
 		return nil
 	}
 	indices := make(map[int]struct{})
@@ -690,7 +690,7 @@ func (a *Agent) filterLargeDiffs(diffs []model.Diff) []model.Diff {
 	for _, d := range diffs {
 		tokens := llm.CountTokens(d.Diff)
 		if tokens > limit {
-			fmt.Fprintf(stdout.Writer(), "[ocr] Skipping %s (~%d tokens exceeds 80%% of max_tokens(%d))\n",
+			fmt.Fprintf(stdout.Writer(), "[NC] Skipping %s (~%d tokens exceeds 80%% of max_tokens(%d))\n",
 				d.NewPath, tokens, a.args.Template.MaxTokens)
 			skipped++
 			continue
@@ -699,7 +699,7 @@ func (a *Agent) filterLargeDiffs(diffs []model.Diff) []model.Diff {
 	}
 
 	if skipped > 0 {
-		fmt.Fprintf(stdout.Writer(), "[ocr] Pre-filtered %d file(s) exceeding 80%% of max_tokens\n", skipped)
+		fmt.Fprintf(stdout.Writer(), "[NC] Pre-filtered %d file(s) exceeding 80%% of max_tokens\n", skipped)
 	}
 	return kept
 }
@@ -734,9 +734,9 @@ func (a *Agent) filterDiffs(diffs []model.Diff) []model.Diff {
 		path := effectivePath(d)
 		if !a.shouldReview(d) {
 			if d.IsBinary {
-				fmt.Fprintf(stdout.Writer(), "[ocr] Skipping %s — binary file\n", path)
+				fmt.Fprintf(stdout.Writer(), "[NC] Skipping %s — binary file\n", path)
 			} else {
-				fmt.Fprintf(stdout.Writer(), "[ocr] Skipping %s — filtered by path/extension rules\n", path)
+				fmt.Fprintf(stdout.Writer(), "[NC] Skipping %s — filtered by path/extension rules\n", path)
 			}
 			skipped++
 			continue
@@ -745,7 +745,7 @@ func (a *Agent) filterDiffs(diffs []model.Diff) []model.Diff {
 	}
 
 	if skipped > 0 {
-		fmt.Fprintf(stdout.Writer(), "[ocr] Filtered %d file(s) by include/exclude rules\n", skipped)
+		fmt.Fprintf(stdout.Writer(), "[NC] Filtered %d file(s) by include/exclude rules\n", skipped)
 	}
 	return kept
 }
@@ -800,7 +800,7 @@ func (a *Agent) executePlanPhase(ctx context.Context, newPath, rawDiff, changeFi
 		atomic.AddInt64(&a.totalCacheReadTokens, resp.Usage.CacheReadTokens)
 		atomic.AddInt64(&a.totalCacheWriteTokens, resp.Usage.CacheWriteTokens)
 	}
-	fmt.Fprintf(stdout.Writer(), "[ocr] Plan completed for %s\n", newPath)
+	fmt.Fprintf(stdout.Writer(), "[NC] Plan completed for %s\n", newPath)
 	return resp.Content(), nil
 }
 
@@ -892,7 +892,7 @@ func (a *Agent) performLlmCodeReview(ctx context.Context, messages []llm.Message
 
 		if len(calls) == 0 {
 			// No tool calls - remind the model
-			fmt.Fprintf(stdout.Writer(), "[ocr] No tool calls parsed for %s, retrying...\n", newPath)
+			fmt.Fprintf(stdout.Writer(), "[NC] No tool calls parsed for %s, retrying...\n", newPath)
 			messages = append(messages, llm.NewTextMessage("user", "You did not successfully call any tools. Please try again or use task_done if finished."))
 			if content != "" {
 				messages = append(messages[:len(messages)-1], llm.NewTextMessage("assistant", content), messages[len(messages)-1])
@@ -935,23 +935,23 @@ func (a *Agent) performLlmCodeReview(ctx context.Context, messages []llm.Message
 		if !hasValidResult {
 			consecutiveEmptyRounds++
 			if consecutiveEmptyRounds >= maxConsecutiveEmptyRounds {
-				fmt.Fprintf(stdout.Writer(), "[ocr] Too many empty retries for %s, stopping.\n", newPath)
+				fmt.Fprintf(stdout.Writer(), "[NC] Too many empty retries for %s, stopping.\n", newPath)
 				break
 			}
-			fmt.Fprintf(stdout.Writer(), "[ocr] No valid tool results for %s, retrying...\n", newPath)
+			fmt.Fprintf(stdout.Writer(), "[NC] No valid tool results for %s, retrying...\n", newPath)
 		} else {
 			consecutiveEmptyRounds = 0
 		}
 
 		succeed := a.addNextMessage(ctx, content, calls, results, &messages, newPath)
 		if !succeed {
-			fmt.Fprintf(stdout.Writer(), "[ocr] Context compression exceeded threshold for %s, stopping.\n", newPath)
+			fmt.Fprintf(stdout.Writer(), "[NC] Context compression exceeded threshold for %s, stopping.\n", newPath)
 			break
 		}
 	}
 
 	if toolReqCount <= 0 {
-		fmt.Fprintf(stdout.Writer(), "[ocr] Max tool requests reached for %s.\n", newPath)
+		fmt.Fprintf(stdout.Writer(), "[NC] Max tool requests reached for %s.\n", newPath)
 	}
 
 	return nil
@@ -1102,7 +1102,7 @@ func BuildToolDefs(entries []toolsconfig.ToolConfigEntry, planOnly bool) []llm.T
 		}
 		var fn llm.FunctionDef
 		if err := json.Unmarshal(defRaw, &fn); err != nil {
-			fmt.Fprintf(stdout.Writer(), "[ocr] WARNING: failed to parse tool definition %q: %v\n", e.Name, err)
+			fmt.Fprintf(stdout.Writer(), "[NC] WARNING: failed to parse tool definition %q: %v\n", e.Name, err)
 			continue
 		}
 		defs = append(defs, llm.ToolDef{

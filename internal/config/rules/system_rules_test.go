@@ -218,7 +218,7 @@ func TestNewResolver_ProjectFileMissing(t *testing.T) {
 func TestNewResolver_ProjectRuleHighestPriority(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()
-	ocrDir := filepath.Join(dir, ".opencodereview")
+	ocrDir := filepath.Join(dir, ".noisecheck")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestNewResolver_ProjectRuleHighestPriority(t *testing.T) {
 
 func TestNewResolver_ProjectRuleFallsBackToSystem(t *testing.T) {
 	dir := t.TempDir()
-	ocrDir := filepath.Join(dir, ".opencodereview")
+	ocrDir := filepath.Join(dir, ".noisecheck")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -306,7 +306,7 @@ func TestNewResolver_CustomOverridesProject(t *testing.T) {
 
 	// Setup project rule with narrower pattern
 	repoDir := t.TempDir()
-	ocrDir := filepath.Join(repoDir, ".opencodereview")
+	ocrDir := filepath.Join(repoDir, ".noisecheck")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -341,7 +341,7 @@ func TestNewResolver_CustomOverridesProject(t *testing.T) {
 
 func TestNewResolver_ProjectFileMalformed(t *testing.T) {
 	dir := t.TempDir()
-	ocrDir := filepath.Join(dir, ".opencodereview")
+	ocrDir := filepath.Join(dir, ".noisecheck")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -427,7 +427,7 @@ func TestFileFilter_CaseInsensitive(t *testing.T) {
 
 func TestNewResolver_FileFilterMerged(t *testing.T) {
 	repoDir := t.TempDir()
-	ocrDir := filepath.Join(repoDir, ".opencodereview")
+	ocrDir := filepath.Join(repoDir, ".noisecheck")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -466,7 +466,7 @@ func TestNewResolver_FileFilterNilWhenEmpty(t *testing.T) {
 
 func TestNewResolver_FileFilterPriorityOverride(t *testing.T) {
 	repoDir := t.TempDir()
-	ocrDir := filepath.Join(repoDir, ".opencodereview")
+	ocrDir := filepath.Join(repoDir, ".noisecheck")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -509,7 +509,7 @@ func TestNewResolver_FileFilterPriorityOverride(t *testing.T) {
 
 func TestNewResolver_FileFilterFallsToProject(t *testing.T) {
 	repoDir := t.TempDir()
-	ocrDir := filepath.Join(repoDir, ".opencodereview")
+	ocrDir := filepath.Join(repoDir, ".noisecheck")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -580,7 +580,7 @@ func TestResolveDetail_SystemPatternMatch(t *testing.T) {
 func TestResolveDetail_ProjectOverridesSystem(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()
-	ocrDir := filepath.Join(dir, ".opencodereview")
+	ocrDir := filepath.Join(dir, ".noisecheck")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -616,7 +616,7 @@ func TestResolveDetail_ProjectOverridesSystem(t *testing.T) {
 func TestResolveDetail_CustomOverridesAll(t *testing.T) {
 	// Project rule
 	repoDir := t.TempDir()
-	ocrDir := filepath.Join(repoDir, ".opencodereview")
+	ocrDir := filepath.Join(repoDir, ".noisecheck")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -650,7 +650,7 @@ func TestResolveDetail_CustomOverridesAll(t *testing.T) {
 
 func TestNewResolver_BraceExpansionInProjectRule(t *testing.T) {
 	dir := t.TempDir()
-	ocrDir := filepath.Join(dir, ".opencodereview")
+	ocrDir := filepath.Join(dir, ".noisecheck")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}

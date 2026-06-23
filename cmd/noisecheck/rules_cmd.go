@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/open-code-review/open-code-review/internal/config/rules"
+	"noisecheck/internal/config/rules"
 )
 
 func runRules(args []string) error {
@@ -19,12 +19,12 @@ func runRules(args []string) error {
 		printRulesUsage()
 		return nil
 	default:
-		return fmt.Errorf("unknown rules sub-command: %s\nRun 'ocr rules -h' for usage", args[0])
+		return fmt.Errorf("unknown rules sub-command: %s\nRun 'nc rules -h' for usage", args[0])
 	}
 }
 
 func runRulesCheck(args []string) error {
-	a := newOcrFlagSet("ocr rules check")
+	a := newNcFlagSet("nc rules check")
 	var repoDir, rulePath string
 	a.StringVar(&repoDir, "repo", "", "root directory of the git repository (default: current dir)")
 	a.StringVar(&rulePath, "rule", "", "path to JSON file with custom review rules")
@@ -62,8 +62,8 @@ func runRulesCheck(args []string) error {
 
 	sourceLabel := map[string]string{
 		"custom":  "Custom (--rule)",
-		"project": "Project (.opencodereview/rule.json)",
-		"global":  "Global (~/.opencodereview/rule.json)",
+		"project": "Project (.noisecheck/rule.json)",
+		"global":  "Global (~/.noisecheck/rule.json)",
 		"system":  "System built-in",
 	}
 
@@ -80,17 +80,17 @@ func runRulesCheck(args []string) error {
 
 func printRulesUsage() {
 	fmt.Println(`Usage:
-  ocr rules <sub-command>
+  nc rules <sub-command>
 
 Sub-commands:
   check <file>   Show which review rule applies to a given file path
 
-Use "ocr rules check -h" for more information.`)
+Use "nc rules check -h" for more information.`)
 }
 
 func printRulesCheckUsage() {
 	fmt.Println(`Usage:
-  ocr rules check [flags] <file-path>
+  nc rules check [flags] <file-path>
 
 Show which review rule applies to the given file path, including its source layer and matched pattern.
 
@@ -99,6 +99,6 @@ Flags:
   --rule    Path to a custom rule JSON file
 
 Examples:
-  ocr rules check src/main/java/com/example/Foo.java
-  ocr rules check --rule custom.json src/main/resources/mapper/UserMapper.xml`)
+  nc rules check src/main/java/com/example/Foo.java
+  nc rules check --rule custom.json src/main/resources/mapper/UserMapper.xml`)
 }

@@ -6,6 +6,7 @@
 
 dist/
 npm/*/bin/
+!npm/noisecheck-cli/bin/*.js
 .claude/plans
 .claude/settings.local.json
 
@@ -23,6 +24,11 @@ temp/
 bin/opencodereview
 
 /opencodereview
+
+/noisecheck
+/noisecheck.exe
+
+/bin/
 
 /node_modules
 
